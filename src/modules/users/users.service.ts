@@ -8,6 +8,7 @@ import { Repository } from 'typeorm';
 import { hash } from 'argon2';
 import { User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 
 @Injectable()
 export class UsersService {
@@ -15,6 +16,10 @@ export class UsersService {
     @InjectRepository(User)
     private readonly usersRepo: Repository<User>,
   ) {}
+
+  async findAll(): Promise<User[]> {
+    return this.usersRepo.find({ relations: ['role'] });
+  }
 
   async findById(id: string): Promise<User> {
     const user = await this.usersRepo.findOne({
@@ -48,4 +53,21 @@ export class UsersService {
     return this.usersRepo.save(user);
   }
 
+  async update(id: string, dto: UpdateUserDto): Promise<User> {
+    const user = await this.findById(id);
+
+    if (dto.fullName !== undefined) user.fullName = dto.fullName;
+    if (dto.roleId !== undefined) user.roleId = dto.roleId;
+    if (dto.isActive !== undefined) user.isActive = dto.isActive;
+    if (dto.password !== undefined)
+      user.passwordHash = await hash(dto.password);
+
+    return this.usersRepo.save(user);
+  }
+
+  async remove(id: string): Promise<void> {
+    const user = await this.findById(id);
+    user.isActive = false;
+    await this.usersRepo.save(user);
+  }
 }
