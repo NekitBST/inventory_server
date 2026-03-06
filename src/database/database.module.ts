@@ -18,7 +18,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
         migrations: [__dirname + '/../../migrations/*.{ts,js}'],
         synchronize: false,
         migrationsRun: false,
-        logging: true,
+        logging: process.env.NODE_ENV !== 'production',
       }),
     }),
   ],
