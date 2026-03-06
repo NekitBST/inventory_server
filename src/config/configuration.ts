@@ -21,5 +21,9 @@ export default () => ({
     refreshSecret: process.env.JWT_REFRESH_SECRET,
     accessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN,
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN,
+    refreshTtlSeconds: parseInt(
+      process.env.JWT_REFRESH_TTL_SECONDS as string,
+      10,
+    ),
   },
 });
