@@ -44,7 +44,12 @@ export class AuthService {
       throw new UnauthorizedException('Refresh-токен не найден или устарел');
     }
 
-    return this.generateTokens(payload.sub, payload.email, payload.role);
+    const user = await this.usersService.findById(payload.sub);
+    if (!user.isActive) {
+      throw new UnauthorizedException('Пользователь заблокирован');
+    }
+
+    return this.generateTokens(user.id, user.email, user.role.name);
   }
 
   async logout(userId: string): Promise<void> {
