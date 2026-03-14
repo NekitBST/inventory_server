@@ -1,7 +1,7 @@
 import { hash } from 'argon2';
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateDefaultAdmin1773500000000 implements MigrationInterface {
+export class CreateDefaultAdmin1773521882622 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     const adminLogin = process.env.ADMIN_LOGIN;
     const adminPassword = process.env.ADMIN_PASSWORD;
