@@ -1,7 +1,7 @@
 import { hash } from 'argon2';
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateDefaultAdmin1773521882622 implements MigrationInterface {
+export class CreateDefaultAdmin1773577175793 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {
     const adminLogin = process.env.ADMIN_LOGIN;
     const adminPassword = process.env.ADMIN_PASSWORD;
@@ -17,17 +17,13 @@ export class CreateDefaultAdmin1773521882622 implements MigrationInterface {
       ['ADMIN'],
     );
 
-    let adminRoleId: number;
-
-    if (existingRoleRows.length > 0) {
-      adminRoleId = existingRoleRows[0].id;
-    } else {
-      const insertedRoleRows = await queryRunner.query(
-        `INSERT INTO roles (name) VALUES ($1) RETURNING id`,
-        ['ADMIN'],
+    if (existingRoleRows.length === 0) {
+      throw new Error(
+        'ADMIN role was not found. Run roles seed migration before default admin migration.',
       );
-      adminRoleId = insertedRoleRows[0].id;
     }
+
+    const adminRoleId: number = existingRoleRows[0].id;
 
     const existingAdminRows = await queryRunner.query(
       `SELECT id FROM users WHERE email = $1 LIMIT 1`,
