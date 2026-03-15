@@ -4,6 +4,7 @@ import configuration from './config/configuration';
 import { DatabaseModule } from './database/database.module';
 import { RedisModule } from './redis/redis.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { EquipmentStatusesModule } from './modules/equipment-statuses/equipment-statuses.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { AuthModule } from './modules/auth/auth.module';
     DatabaseModule,
     RedisModule,
     AuthModule,
+    EquipmentStatusesModule,
   ],
 })
 export class AppModule {}
