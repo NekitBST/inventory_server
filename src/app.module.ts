@@ -4,6 +4,7 @@ import configuration from './config/configuration';
 import { DatabaseModule } from './database/database.module';
 import { RedisModule } from './redis/redis.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { EquipmentModule } from './modules/equipment/equipment.module';
 import { EquipmentStatusesModule } from './modules/equipment-statuses/equipment-statuses.module';
 import { EquipmentTypesModule } from './modules/equipment-types/equipment-types.module';
 import { LocationsModule } from './modules/locations/locations.module';
@@ -17,6 +18,7 @@ import { LocationsModule } from './modules/locations/locations.module';
     DatabaseModule,
     RedisModule,
     AuthModule,
+    EquipmentModule,
     EquipmentStatusesModule,
     EquipmentTypesModule,
     LocationsModule,
