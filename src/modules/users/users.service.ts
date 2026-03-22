@@ -9,12 +9,14 @@ import { hash } from 'argon2';
 import { User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { RedisService } from '../../redis/redis.service';
 
 @Injectable()
 export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly usersRepo: Repository<User>,
+    private readonly redis: RedisService,
   ) {}
 
   async findAll(): Promise<User[]> {
@@ -59,8 +61,10 @@ export class UsersService {
     if (dto.fullName !== undefined) user.fullName = dto.fullName;
     if (dto.roleId !== undefined) user.roleId = dto.roleId;
     if (dto.isActive !== undefined) user.isActive = dto.isActive;
-    if (dto.password !== undefined)
+    if (dto.password !== undefined) {
       user.passwordHash = await hash(dto.password);
+      await this.redis.del(`refresh:${user.id}`);
+    }
 
     return this.usersRepo.save(user);
   }
