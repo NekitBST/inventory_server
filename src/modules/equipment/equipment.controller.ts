@@ -1,21 +1,21 @@
 import {
   Body,
   Controller,
-  DefaultValuePipe,
   Delete,
   Get,
   HttpCode,
   HttpStatus,
   Param,
-  ParseIntPipe,
   ParseUUIDPipe,
   Patch,
   Post,
   Query,
   UseGuards,
+  ValidationPipe,
 } from '@nestjs/common';
 import { EquipmentService } from './equipment.service';
 import { CreateEquipmentDto } from './dto/create-equipment.dto';
+import { FindEquipmentQueryDto } from './dto/find-equipment-query.dto';
 import { UpdateEquipmentDto } from './dto/update-equipment.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -29,22 +29,16 @@ export class EquipmentController {
 
   @Get()
   findAll(
-    @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
-    @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
-    @Query('statusId', new ParseIntPipe({ optional: true })) statusId?: number,
-    @Query('typeId', new ParseIntPipe({ optional: true })) typeId?: number,
-    @Query('locationId', new ParseIntPipe({ optional: true }))
-    locationId?: number,
-    @Query('search') search?: string,
+    @Query(
+      new ValidationPipe({
+        transform: true,
+        whitelist: true,
+        forbidNonWhitelisted: true,
+      }),
+    )
+    query: FindEquipmentQueryDto,
   ) {
-    return this.equipmentService.findAll({
-      page,
-      limit,
-      statusId,
-      typeId,
-      locationId,
-      search,
-    });
+    return this.equipmentService.findAll(query);
   }
 
   @Get(':id')

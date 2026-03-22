@@ -7,19 +7,11 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, QueryFailedError, Repository } from 'typeorm';
 import { Equipment } from './entities/equipment.entity';
 import { CreateEquipmentDto } from './dto/create-equipment.dto';
+import { FindEquipmentQueryDto } from './dto/find-equipment-query.dto';
 import { UpdateEquipmentDto } from './dto/update-equipment.dto';
 import { Location } from '../locations/entities/location.entity';
 import { EquipmentStatus } from '../equipment-statuses/entities/equipment-status.entity';
 import { EquipmentType } from '../equipment-types/entities/equipment-type.entity';
-
-interface FindEquipmentParams {
-  page: number;
-  limit: number;
-  statusId?: number;
-  typeId?: number;
-  locationId?: number;
-  search?: string;
-}
 
 @Injectable()
 export class EquipmentService {
@@ -34,7 +26,7 @@ export class EquipmentService {
     private readonly typesRepo: Repository<EquipmentType>,
   ) {}
 
-  async findAll(params: FindEquipmentParams) {
+  async findAll(params: FindEquipmentQueryDto) {
     const page = params.page < 1 ? 1 : params.page;
     const limit =
       params.limit < 1 ? 20 : params.limit > 100 ? 100 : params.limit;
