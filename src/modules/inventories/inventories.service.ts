@@ -15,6 +15,16 @@ export class InventoriesService {
   ) {}
 
   async create(createdBy: string): Promise<Inventory> {
+    const activeInventory = await this.inventoriesRepo.findOne({
+      where: { createdBy, status: 'OPEN' },
+    });
+
+    if (activeInventory) {
+      throw new ConflictException(
+        'Сначала закройте текущую инвентаризацию перед созданием новой',
+      );
+    }
+
     const inventory = this.inventoriesRepo.create({
       createdBy,
       status: 'OPEN',
