@@ -49,10 +49,12 @@ export class InventoriesService {
   }
 
   async findAll(): Promise<Inventory[]> {
-    return this.inventoriesRepo.find({
+    const inventories = await this.inventoriesRepo.find({
       relations: ['createdByUser'],
       order: { startedAt: 'DESC' },
     });
+
+    return inventories.map((inventory) => this.toInventoryWithUser(inventory));
   }
 
   async findById(id: string): Promise<Inventory> {
@@ -61,11 +63,13 @@ export class InventoriesService {
       relations: ['createdByUser'],
     });
     if (!inventory) throw new NotFoundException('Инвентаризация не найдена');
-    return inventory;
+    return this.toInventoryWithUser(inventory);
   }
 
   async close(id: string): Promise<Inventory> {
-    const inventory = await this.findById(id);
+    const inventory = await this.inventoriesRepo.findOne({ where: { id } });
+    if (!inventory) throw new NotFoundException('Инвентаризация не найдена');
+
     if (inventory.status === 'CLOSED') {
       throw new ConflictException('Инвентаризация уже закрыта');
     }
@@ -73,5 +77,19 @@ export class InventoriesService {
     inventory.status = 'CLOSED';
     inventory.finishedAt = new Date();
     return this.inventoriesRepo.save(inventory);
+  }
+
+  private toInventoryWithUser(inventory: Inventory): Inventory {
+    return {
+      ...inventory,
+      createdByUser: inventory.createdByUser
+        ? {
+            id: inventory.createdByUser.id,
+            email: inventory.createdByUser.email,
+            fullName: inventory.createdByUser.fullName,
+            roleId: inventory.createdByUser.roleId,
+          }
+        : undefined,
+    } as Inventory;
   }
 }
