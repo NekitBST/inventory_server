@@ -85,6 +85,9 @@ export class SchemaDb1772820697167 implements MigrationInterface {
     await queryRunner.query(
       `CREATE INDEX idx_inventories_created_by ON inventories(created_by)`,
     );
+    await queryRunner.query(
+      `CREATE UNIQUE INDEX uq_inventories_open_per_user ON inventories(created_by) WHERE status = 'OPEN'`,
+    );
 
     await queryRunner.query(`
       CREATE TABLE inventory_records (

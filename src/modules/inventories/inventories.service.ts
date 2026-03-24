@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { QueryFailedError, Repository } from 'typeorm';
 import { Inventory } from './entities/inventory.entity';
 
 @Injectable()
@@ -30,7 +30,22 @@ export class InventoriesService {
       status: 'OPEN',
       finishedAt: null,
     });
-    return this.inventoriesRepo.save(inventory);
+
+    try {
+      return await this.inventoriesRepo.save(inventory);
+    } catch (error) {
+      if (
+        error instanceof QueryFailedError &&
+        (error as { code?: string; constraint?: string }).code === '23505' &&
+        (error as { code?: string; constraint?: string }).constraint ===
+          'uq_inventories_open_per_user'
+      ) {
+        throw new ConflictException(
+          'Сначала закройте текущую инвентаризацию перед созданием новой',
+        );
+      }
+      throw error;
+    }
   }
 
   async findAll(): Promise<Inventory[]> {
