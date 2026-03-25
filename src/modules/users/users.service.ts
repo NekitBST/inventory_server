@@ -56,7 +56,8 @@ export class UsersService {
   }
 
   async update(id: string, dto: UpdateUserDto): Promise<User> {
-    const user = await this.findById(id);
+    const user = await this.usersRepo.findOne({ where: { id } });
+    if (!user) throw new NotFoundException('Пользователь не найден');
 
     if (dto.fullName !== undefined) user.fullName = dto.fullName;
     if (dto.roleId !== undefined) user.roleId = dto.roleId;

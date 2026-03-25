@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, QueryFailedError, Repository } from 'typeorm';
+import { Brackets, Not, QueryFailedError, Repository } from 'typeorm';
 import { Equipment } from './entities/equipment.entity';
 import { CreateEquipmentDto } from './dto/create-equipment.dto';
 import { FindEquipmentQueryDto } from './dto/find-equipment-query.dto';
@@ -119,7 +119,8 @@ export class EquipmentService {
   }
 
   async update(id: string, dto: UpdateEquipmentDto): Promise<Equipment> {
-    const equipment = await this.findById(id);
+    const equipment = await this.equipmentRepo.findOne({ where: { id } });
+    if (!equipment) throw new NotFoundException('Оборудование не найдено')
 
     if (
       dto.inventoryNumber !== undefined &&
