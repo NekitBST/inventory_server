@@ -7,6 +7,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { EquipmentModule } from './modules/equipment/equipment.module';
 import { EquipmentStatusesModule } from './modules/equipment-statuses/equipment-statuses.module';
 import { EquipmentTypesModule } from './modules/equipment-types/equipment-types.module';
+import { InventoryRecordsModule } from './modules/inventory-records/inventory-records.module';
 import { InventoriesModule } from './modules/inventories/inventories.module';
 import { LocationsModule } from './modules/locations/locations.module';
 
@@ -22,6 +23,7 @@ import { LocationsModule } from './modules/locations/locations.module';
     EquipmentModule,
     EquipmentStatusesModule,
     EquipmentTypesModule,
+    InventoryRecordsModule,
     InventoriesModule,
     LocationsModule,
   ],

@@ -94,11 +94,10 @@ export class SchemaDb1772820697167 implements MigrationInterface {
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         inventory_id UUID NOT NULL REFERENCES inventories(id) ON DELETE CASCADE,
         equipment_id UUID NOT NULL REFERENCES equipment(id) ON DELETE RESTRICT,
-        scanned_by UUID NOT NULL REFERENCES users(id) ON DELETE RESTRICT,
         scanned_at TIMESTAMP NOT NULL DEFAULT now(),
         comment TEXT,
         result_status VARCHAR(20) NOT NULL,
-        CHECK (result_status IN ('FOUND', 'NOT_FOUND', 'DAMAGED'))
+        CHECK (result_status IN ('FOUND', 'DAMAGED'))
       )
     `);
 
