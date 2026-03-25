@@ -41,6 +41,11 @@ export class EquipmentController {
     return this.equipmentService.findAll(query);
   }
 
+  @Get('by-inventory/:inventoryNumber')
+  findByInventoryNumber(@Param('inventoryNumber') inventoryNumber: string) {
+    return this.equipmentService.findByInventoryNumber(inventoryNumber);
+  }
+
   @Get(':id')
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.equipmentService.findById(id);

@@ -87,6 +87,17 @@ export class EquipmentService {
     return equipment;
   }
 
+  async findByInventoryNumber(inventoryNumber: string): Promise<Equipment> {
+    const normalizedInventoryNumber = inventoryNumber.trim();
+    const equipment = await this.equipmentRepo.findOne({
+      where: { inventoryNumber: normalizedInventoryNumber },
+      relations: ['location', 'status', 'type'],
+    });
+
+    if (!equipment) throw new NotFoundException('Оборудование не найдено');
+    return equipment;
+  }
+
   async create(dto: CreateEquipmentDto): Promise<Equipment> {
     await this.ensureInventoryNumberUnique(dto.inventoryNumber);
     if (dto.serialNumber) {
