@@ -64,7 +64,7 @@ export class UsersService {
     if (dto.isActive !== undefined) user.isActive = dto.isActive;
     if (dto.password !== undefined) {
       user.passwordHash = await hash(dto.password);
-      await this.redis.del(`refresh:${user.id}`);
+      await this.invalidateAllSessions(user.id);
     }
 
     return this.usersRepo.save(user);
@@ -74,5 +74,19 @@ export class UsersService {
     const user = await this.findById(id);
     user.isActive = false;
     await this.usersRepo.save(user);
+  }
+
+  private async invalidateAllSessions(userId: string): Promise<void> {
+    await this.redis.incr(`authv:${userId}`);
+
+    const sessionsKey = `sessions:${userId}`;
+    const sessionIds = await this.redis.smembers(sessionsKey);
+    const refreshKeys = sessionIds.map((sid) => `refresh:${userId}:${sid}`);
+
+    if (refreshKeys.length > 0) {
+      await this.redis.del(...refreshKeys);
+    }
+
+    await this.redis.del(sessionsKey, `refresh:${userId}`);
   }
 }

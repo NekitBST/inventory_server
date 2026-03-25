@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Headers,
   HttpCode,
   HttpStatus,
   Post,
@@ -33,8 +34,18 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.NO_CONTENT)
   @UseGuards(JwtAuthGuard)
-  logout(@CurrentUser() user: User) {
-    return this.authService.logout(user.id);
+  logout(
+    @CurrentUser() user: User,
+    @Headers('authorization') authorization?: string,
+  ) {
+    return this.authService.logout(user.id, authorization);
+  }
+
+  @Post('logout-all')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(JwtAuthGuard)
+  logoutAll(@CurrentUser() user: User) {
+    return this.authService.logoutAll(user.id);
   }
 
   @Get('me')
