@@ -83,7 +83,9 @@ JWT_ACCESS_EXPIRES_IN=15m
 JWT_REFRESH_EXPIRES_IN=7d
 JWT_REFRESH_TTL_SECONDS=604800
 
+// Логин дефолтного админа для миграции
 ADMIN_LOGIN=your_admin_login
+// Пароль дефолтного админа для миграции
 ADMIN_PASSWORD=your_admin_password
 
 PORT=3000
@@ -98,7 +100,7 @@ npm run migrate:up
 ### 5) Запуск
 
 ```bash
-npm run start:dev
+npm run start
 ```
 
 Swagger:
