@@ -15,6 +15,10 @@ import {
   ApiBearerAuth,
   ApiCreatedResponse,
   ApiNoContentResponse,
+  ApiUnauthorizedResponse,
+  ApiForbiddenResponse,
+  ApiNotFoundResponse,
+  ApiConflictResponse,
   ApiOkResponse,
   ApiOperation,
   ApiTags,
@@ -36,22 +40,30 @@ import { Roles } from '../../common/constants/roles';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @ApiOperation({ summary: 'Список пользователей' })
+  @ApiOperation({ summary: 'Список пользователей (только для администраторов)' })
   @ApiOkResponse({ type: UserWithRoleResponseDto, isArray: true })
+  @ApiUnauthorizedResponse({ description: 'Токен невалиден' })
+  @ApiForbiddenResponse({ description: 'Доступ запрещен' })
   @Get()
   findAll() {
     return this.usersService.findAll();
   }
 
-  @ApiOperation({ summary: 'Пользователь по ID' })
+  @ApiOperation({ summary: 'Пользователь по ID (только для администраторов)' })
   @ApiOkResponse({ type: UserWithRoleResponseDto })
+  @ApiUnauthorizedResponse({ description: 'Токен невалиден' })
+  @ApiForbiddenResponse({ description: 'Доступ запрещен' })
+  @ApiNotFoundResponse({ description: 'Пользователь не найден' })
   @Get(':id')
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.usersService.findById(id);
   }
 
-  @ApiOperation({ summary: 'Создать пользователя' })
+  @ApiOperation({ summary: 'Создать пользователя (только для администраторов)' })
   @ApiCreatedResponse({ type: UserFlatResponseDto })
+  @ApiUnauthorizedResponse({ description: 'Токен невалиден' })
+  @ApiForbiddenResponse({ description: 'Доступ запрещен' })
+  @ApiConflictResponse({ description: 'Email уже занят' })
   @Post()
   create(@Body() dto: CreateUserDto) {
     return this.usersService.create(dto);
@@ -59,13 +71,20 @@ export class UsersController {
 
   @ApiOperation({ summary: 'Обновить пользователя' })
   @ApiOkResponse({ type: UserFlatResponseDto })
+  @ApiUnauthorizedResponse({ description: 'Токен невалиден' })
+  @ApiForbiddenResponse({ description: 'Доступ запрещен' })
+  @ApiNotFoundResponse({ description: 'Пользователь не найден' })
+  @ApiConflictResponse({ description: 'Email уже занят' })
   @Patch(':id')
   update(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateUserDto) {
     return this.usersService.update(id, dto);
   }
 
-  @ApiOperation({ summary: 'Деактивировать пользователя' })
+  @ApiOperation({ summary: 'Деактивировать пользователя (только для администраторов)' })
   @ApiNoContentResponse({ description: 'Пользователь деактивирован' })
+  @ApiUnauthorizedResponse({ description: 'Токен невалиден' })
+  @ApiForbiddenResponse({ description: 'Доступ запрещен' })
+  @ApiNotFoundResponse({ description: 'Пользователь не найден' })
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseUUIDPipe) id: string) {

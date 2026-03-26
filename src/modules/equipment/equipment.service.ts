@@ -120,7 +120,7 @@ export class EquipmentService {
 
   async update(id: string, dto: UpdateEquipmentDto): Promise<Equipment> {
     const equipment = await this.equipmentRepo.findOne({ where: { id } });
-    if (!equipment) throw new NotFoundException('Оборудование не найдено')
+    if (!equipment) throw new NotFoundException('Оборудование не найдено');
 
     if (
       dto.inventoryNumber !== undefined &&
