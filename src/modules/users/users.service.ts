@@ -61,7 +61,6 @@ export class UsersService {
 
     if (dto.fullName !== undefined) user.fullName = dto.fullName;
     if (dto.roleId !== undefined) user.roleId = dto.roleId;
-    if (dto.isActive !== undefined) user.isActive = dto.isActive;
     if (dto.password !== undefined) {
       user.passwordHash = await hash(dto.password);
       await this.invalidateAllSessions(user.id);

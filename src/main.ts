@@ -5,6 +5,7 @@ import {
   ValidationError,
   ValidationPipe,
 } from '@nestjs/common';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
 type SafeValidationError = {
@@ -28,6 +29,15 @@ function toSafeValidationErrors(
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('Inventory API')
+    .setDescription('API для системы инвентаризации')
+    .setVersion('1.0.0')
+    .addBearerAuth()
+    .build();
+  const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('swagger', app, swaggerDocument);
 
   app.useGlobalPipes(
     new ValidationPipe({
