@@ -9,7 +9,7 @@ import {
   ApiTags,
   ApiUnauthorizedResponse,
   ApiNotFoundResponse,
-  ApiConflictResponse
+  ApiConflictResponse,
 } from '@nestjs/swagger';
 import {
   Body,
@@ -132,7 +132,6 @@ export class EquipmentController {
   @ApiNoContentResponse({ description: 'Оборудование удалено' })
   @ApiUnauthorizedResponse({ description: 'Токен невалиден' })
   @ApiNotFoundResponse({ description: 'Оборудование не найдено' })
-  @ApiConflictResponse({ description: 'Нельзя удалить оборудование, которое участвует в инвентаризации' })
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseUUIDPipe) id: string) {

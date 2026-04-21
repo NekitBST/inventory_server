@@ -50,16 +50,24 @@ export class SchemaDb1772820697167 implements MigrationInterface {
     await queryRunner.query(`
       CREATE TABLE equipment (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        inventory_number VARCHAR(100) UNIQUE NOT NULL,
+        inventory_number VARCHAR(100) NOT NULL,
         name VARCHAR(255) NOT NULL,
-        serial_number VARCHAR(100) UNIQUE,
+        serial_number VARCHAR(100),
         location_id INT REFERENCES locations(id) ON DELETE SET NULL,
         status_id INT NOT NULL REFERENCES equipment_statuses(id) ON DELETE RESTRICT,
         type_id INT NOT NULL REFERENCES equipment_types(id) ON DELETE RESTRICT,
         created_at TIMESTAMP NOT NULL DEFAULT now(),
-        updated_at TIMESTAMP NOT NULL DEFAULT now()
+        updated_at TIMESTAMP NOT NULL DEFAULT now(),
+        deleted_at TIMESTAMP
       )
     `);
+
+    await queryRunner.query(
+      `CREATE UNIQUE INDEX uq_equipment_inventory_number_active ON equipment(inventory_number) WHERE deleted_at IS NULL`,
+    );
+    await queryRunner.query(
+      `CREATE UNIQUE INDEX uq_equipment_serial_number_active ON equipment(serial_number) WHERE deleted_at IS NULL AND serial_number IS NOT NULL`,
+    );
 
     await queryRunner.query(
       `CREATE INDEX idx_equipment_location ON equipment(location_id)`,

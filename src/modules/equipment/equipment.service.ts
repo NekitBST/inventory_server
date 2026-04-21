@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, Not, QueryFailedError, Repository } from 'typeorm';
+import { Brackets, IsNull, QueryFailedError, Repository } from 'typeorm';
 import { Equipment } from './entities/equipment.entity';
 import { CreateEquipmentDto } from './dto/create-equipment.dto';
 import { FindEquipmentQueryDto } from './dto/find-equipment-query.dto';
@@ -37,6 +37,7 @@ export class EquipmentService {
       .leftJoinAndSelect('equipment.location', 'location')
       .leftJoinAndSelect('equipment.status', 'status')
       .leftJoinAndSelect('equipment.type', 'type')
+      .where('equipment.deletedAt IS NULL')
       .orderBy('equipment.createdAt', 'DESC')
       .skip(offset)
       .take(limit);
@@ -79,7 +80,7 @@ export class EquipmentService {
 
   async findById(id: string): Promise<Equipment> {
     const equipment = await this.equipmentRepo.findOne({
-      where: { id },
+      where: { id, deletedAt: IsNull() },
       relations: ['location', 'status', 'type'],
     });
 
@@ -90,7 +91,10 @@ export class EquipmentService {
   async findByInventoryNumber(inventoryNumber: string): Promise<Equipment> {
     const normalizedInventoryNumber = inventoryNumber.trim();
     const equipment = await this.equipmentRepo.findOne({
-      where: { inventoryNumber: normalizedInventoryNumber },
+      where: {
+        inventoryNumber: normalizedInventoryNumber,
+        deletedAt: IsNull(),
+      },
       relations: ['location', 'status', 'type'],
     });
 
@@ -119,7 +123,9 @@ export class EquipmentService {
   }
 
   async update(id: string, dto: UpdateEquipmentDto): Promise<Equipment> {
-    const equipment = await this.equipmentRepo.findOne({ where: { id } });
+    const equipment = await this.equipmentRepo.findOne({
+      where: { id, deletedAt: IsNull() },
+    });
     if (!equipment) throw new NotFoundException('Оборудование не найдено');
 
     if (
@@ -171,20 +177,15 @@ export class EquipmentService {
   }
 
   async remove(id: string): Promise<void> {
-    await this.findById(id);
+    const equipment = await this.equipmentRepo.findOne({
+      where: { id, deletedAt: IsNull() },
+    });
 
-    const usageRows = await this.equipmentRepo.query(
-      `SELECT 1 FROM inventory_records WHERE equipment_id = $1 LIMIT 1`,
-      [id],
-    );
-
-    if (usageRows.length > 0) {
-      throw new ConflictException(
-        'Нельзя удалить оборудование, которое участвует в инвентаризации',
-      );
+    if (!equipment) {
+      throw new NotFoundException('Оборудование не найдено');
     }
 
-    await this.equipmentRepo.delete(id);
+    await this.equipmentRepo.softDelete(id);
   }
 
   private async ensureReferencesExist(
@@ -208,7 +209,7 @@ export class EquipmentService {
 
   private async ensureInventoryNumberUnique(value: string): Promise<void> {
     const existing = await this.equipmentRepo.findOne({
-      where: { inventoryNumber: value },
+      where: { inventoryNumber: value, deletedAt: IsNull() },
     });
     if (existing) {
       throw new ConflictException(
@@ -219,7 +220,7 @@ export class EquipmentService {
 
   private async ensureSerialNumberUnique(value: string): Promise<void> {
     const existing = await this.equipmentRepo.findOne({
-      where: { serialNumber: value },
+      where: { serialNumber: value, deletedAt: IsNull() },
     });
     if (existing) {
       throw new ConflictException(

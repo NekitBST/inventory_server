@@ -5,6 +5,7 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
+  DeleteDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
@@ -81,4 +82,8 @@ export class Equipment {
   @ApiProperty({ example: '2026-03-26T09:30:00.000Z' })
   @UpdateDateColumn({ name: 'updated_at' })
   updatedAt: Date;
+
+  @ApiPropertyOptional({ example: '2026-04-22T09:30:00.000Z', nullable: true })
+  @DeleteDateColumn({ name: 'deleted_at' })
+  deletedAt: Date | null;
 }
