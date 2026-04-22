@@ -62,8 +62,7 @@ export class UsersService {
     if (dto.fullName !== undefined) user.fullName = dto.fullName;
     if (dto.roleId !== undefined) user.roleId = dto.roleId;
     if (dto.password !== undefined) {
-      user.passwordHash = await hash(dto.password);
-      await this.invalidateAllSessions(user.id);
+      await this.setPassword(user, dto.password);
     }
 
     return this.usersRepo.save(user);
@@ -71,8 +70,35 @@ export class UsersService {
 
   async remove(id: string): Promise<void> {
     const user = await this.findById(id);
+
+    if (!user.isActive) {
+      throw new ConflictException('Пользователь уже деактивирован');
+    }
+
     user.isActive = false;
     await this.usersRepo.save(user);
+  }
+
+  async restore(id: string): Promise<void> {
+    const user = await this.findById(id);
+
+    if (user.isActive) {
+      throw new ConflictException('Пользователь уже активен');
+    }
+
+    user.isActive = true;
+    await this.usersRepo.save(user);
+  }
+
+  async changePassword(userId: string, password: string): Promise<void> {
+    const user = await this.findById(userId);
+    await this.setPassword(user, password);
+    await this.usersRepo.save(user);
+  }
+
+  private async setPassword(user: User, password: string): Promise<void> {
+    user.passwordHash = await hash(password);
+    await this.invalidateAllSessions(user.id);
   }
 
   private async invalidateAllSessions(userId: string): Promise<void> {

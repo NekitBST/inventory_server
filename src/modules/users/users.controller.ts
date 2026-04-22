@@ -40,7 +40,9 @@ import { Roles } from '../../common/constants/roles';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @ApiOperation({ summary: 'Список пользователей (только для администраторов)' })
+  @ApiOperation({
+    summary: 'Список пользователей (только для администраторов)',
+  })
   @ApiOkResponse({ type: UserWithRoleResponseDto, isArray: true })
   @ApiUnauthorizedResponse({ description: 'Токен невалиден' })
   @ApiForbiddenResponse({ description: 'Доступ запрещен' })
@@ -59,7 +61,9 @@ export class UsersController {
     return this.usersService.findById(id);
   }
 
-  @ApiOperation({ summary: 'Создать пользователя (только для администраторов)' })
+  @ApiOperation({
+    summary: 'Создать пользователя (только для администраторов)',
+  })
   @ApiCreatedResponse({ type: UserFlatResponseDto })
   @ApiUnauthorizedResponse({ description: 'Токен невалиден' })
   @ApiForbiddenResponse({ description: 'Доступ запрещен' })
@@ -80,14 +84,31 @@ export class UsersController {
     return this.usersService.update(id, dto);
   }
 
-  @ApiOperation({ summary: 'Деактивировать пользователя (только для администраторов)' })
+  @ApiOperation({
+    summary: 'Деактивировать пользователя (только для администраторов)',
+  })
   @ApiNoContentResponse({ description: 'Пользователь деактивирован' })
   @ApiUnauthorizedResponse({ description: 'Токен невалиден' })
   @ApiForbiddenResponse({ description: 'Доступ запрещен' })
   @ApiNotFoundResponse({ description: 'Пользователь не найден' })
+  @ApiConflictResponse({ description: 'Пользователь уже деактивирован' })
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   remove(@Param('id', ParseUUIDPipe) id: string) {
     return this.usersService.remove(id);
+  }
+
+  @ApiOperation({
+    summary: 'Восстановить пользователя (только для администраторов)',
+  })
+  @ApiNoContentResponse({ description: 'Пользователь восстановлен' })
+  @ApiUnauthorizedResponse({ description: 'Токен невалиден' })
+  @ApiForbiddenResponse({ description: 'Доступ запрещен' })
+  @ApiNotFoundResponse({ description: 'Пользователь не найден' })
+  @ApiConflictResponse({ description: 'Пользователь уже активен' })
+  @Post(':id/restore')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  restore(@Param('id', ParseUUIDPipe) id: string) {
+    return this.usersService.restore(id);
   }
 }

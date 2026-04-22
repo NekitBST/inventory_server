@@ -21,6 +21,7 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { AuthTokensResponseDto } from './dto/auth-tokens-response.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
@@ -78,6 +79,19 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   logoutAll(@CurrentUser() user: User) {
     return this.authService.logoutAll(user.id);
+  }
+
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Сменить пароль текущего пользователя' })
+  @ApiNoContentResponse({ description: 'Пароль успешно изменен' })
+  @ApiUnauthorizedResponse({
+    description: 'Токен невалиден или текущий пароль неверный',
+  })
+  @Post('change-password')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(JwtAuthGuard)
+  changePassword(@CurrentUser() user: User, @Body() dto: ChangePasswordDto) {
+    return this.authService.changePassword(user.id, dto);
   }
 
   @ApiBearerAuth()

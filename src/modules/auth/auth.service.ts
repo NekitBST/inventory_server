@@ -6,6 +6,7 @@ import { randomUUID } from 'crypto';
 import { UsersService } from '../users/users.service';
 import { RedisService } from '../../redis/redis.service';
 import { LoginDto } from './dto/login.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 interface AccessPayload {
   sub: string;
@@ -143,6 +144,20 @@ export class AuthService {
     }
 
     await this.redis.del(sessionsKey, this.getLegacyRefreshKey(userId));
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto): Promise<void> {
+    const user = await this.usersService.findById(userId);
+
+    const isCurrentPasswordValid = await verify(
+      user.passwordHash,
+      dto.currentPassword,
+    );
+    if (!isCurrentPasswordValid) {
+      throw new UnauthorizedException('Текущий пароль указан неверно');
+    }
+
+    await this.usersService.changePassword(userId, dto.newPassword);
   }
 
   private async generateTokens(
