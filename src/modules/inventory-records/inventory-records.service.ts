@@ -10,6 +10,7 @@ import { CreateInventoryRecordDto } from './dto/create-inventory-record.dto';
 import { UpdateInventoryRecordDto } from './dto/update-inventory-record.dto';
 import { Inventory } from '../inventories/entities/inventory.entity';
 import { Equipment } from '../equipment/entities/equipment.entity';
+import { FindInventoryRecordsQueryDto } from './dto/find-inventory-records-query.dto';
 
 @Injectable()
 export class InventoryRecordsService {
@@ -62,16 +63,42 @@ export class InventoryRecordsService {
     }
   }
 
-  async findByInventory(inventoryId: string): Promise<InventoryRecord[]> {
+  async findByInventory(
+    inventoryId: string,
+    params: FindInventoryRecordsQueryDto,
+  ) {
     const inventory = await this.inventoriesRepo.findOne({
       where: { id: inventoryId },
     });
     if (!inventory) throw new NotFoundException('Инвентаризация не найдена');
 
-    return this.recordsRepo.find({
-      where: { inventoryId },
-      order: { scannedAt: 'DESC' },
-    });
+    const page = params.page < 1 ? 1 : params.page;
+    const limit =
+      params.limit < 1 ? 30 : params.limit > 100 ? 100 : params.limit;
+    const offset = (page - 1) * limit;
+
+    const qb = this.recordsRepo
+      .createQueryBuilder('record')
+      .leftJoin('equipment', 'equipment', 'equipment.id = record.equipmentId')
+      .where('record.inventoryId = :inventoryId', { inventoryId })
+      .orderBy('record.scannedAt', 'DESC')
+      .skip(offset)
+      .take(limit);
+
+    if (params.resultStatus !== undefined) {
+      qb.andWhere('record.resultStatus = :resultStatus', {
+        resultStatus: params.resultStatus,
+      });
+    }
+
+    if (params.search && params.search.trim().length > 0) {
+      qb.andWhere('equipment.name ILIKE :search', {
+        search: `%${params.search.trim()}%`,
+      });
+    }
+
+    const [items, total] = await qb.getManyAndCount();
+    return { items, total, page, limit };
   }
 
   async update(

@@ -6,6 +6,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
@@ -17,7 +18,9 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
+  ValidationPipe,
 } from '@nestjs/common';
 import { InventoryRecordsService } from './inventory-records.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -26,6 +29,8 @@ import { Roles } from '../../common/constants/roles';
 import { CreateInventoryRecordDto } from './dto/create-inventory-record.dto';
 import { UpdateInventoryRecordDto } from './dto/update-inventory-record.dto';
 import { InventoryRecordResponseDto } from './dto/inventory-record-response.dto';
+import { FindInventoryRecordsQueryDto } from './dto/find-inventory-records-query.dto';
+import { InventoryRecordListResponseDto } from './dto/inventory-record-list-response.dto';
 
 @ApiTags('Inventory Records')
 @ApiBearerAuth()
@@ -56,12 +61,30 @@ export class InventoryRecordsController {
     example: '5b8f0b5f-a8f9-4cdb-a9d3-8d3137d8ce74',
     description: 'UUID инвентаризации',
   })
-  @ApiOkResponse({ type: InventoryRecordResponseDto, isArray: true })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 30 })
+  @ApiQuery({
+    name: 'resultStatus',
+    required: false,
+    enum: ['FOUND', 'DAMAGED'],
+  })
+  @ApiQuery({ name: 'search', required: false, example: 'Lenovo' })
+  @ApiOkResponse({ type: InventoryRecordListResponseDto })
   @ApiNotFoundResponse({ description: 'Инвентаризация не найдена' })
   @ApiUnauthorizedResponse({ description: 'Токен невалиден' })
   @Get('by-inventory/:inventoryId')
-  findByInventory(@Param('inventoryId', ParseUUIDPipe) inventoryId: string) {
-    return this.recordsService.findByInventory(inventoryId);
+  findByInventory(
+    @Param('inventoryId', ParseUUIDPipe) inventoryId: string,
+    @Query(
+      new ValidationPipe({
+        transform: true,
+        whitelist: true,
+        forbidNonWhitelisted: true,
+      }),
+    )
+    query: FindInventoryRecordsQueryDto,
+  ) {
+    return this.recordsService.findByInventory(inventoryId, query);
   }
 
   @ApiOperation({ summary: 'Обновить запись инвентаризации' })

@@ -6,6 +6,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
@@ -16,7 +17,9 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
+  ValidationPipe,
 } from '@nestjs/common';
 import { InventoriesService } from './inventories.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -26,6 +29,8 @@ import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
 import { InventoryResponseDto } from './dto/inventory-response.dto';
 import { InventoryWithUserResponseDto } from './dto/inventory-with-user-response.dto';
+import { FindInventoriesQueryDto } from './dto/find-inventories-query.dto';
+import { InventoryListResponseDto } from './dto/inventory-list-response.dto';
 
 @ApiTags('Inventories')
 @ApiBearerAuth()
@@ -48,11 +53,25 @@ export class InventoriesController {
   }
 
   @ApiOperation({ summary: 'Список инвентаризаций' })
-  @ApiOkResponse({ type: InventoryWithUserResponseDto, isArray: true })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
+  @ApiQuery({ name: 'status', required: false, enum: ['OPEN', 'CLOSED'] })
+  @ApiQuery({ name: 'search', required: false, example: 'Иван' })
+  @ApiQuery({ name: 'sortOrder', required: false, enum: ['ASC', 'DESC'] })
+  @ApiOkResponse({ type: InventoryListResponseDto })
   @ApiUnauthorizedResponse({ description: 'Токен невалиден' })
   @Get()
-  findAll() {
-    return this.inventoriesService.findAll();
+  findAll(
+    @Query(
+      new ValidationPipe({
+        transform: true,
+        whitelist: true,
+        forbidNonWhitelisted: true,
+      }),
+    )
+    query: FindInventoriesQueryDto,
+  ) {
+    return this.inventoriesService.findAll(query);
   }
 
   @ApiOperation({ summary: 'Инвентаризация по UUID' })

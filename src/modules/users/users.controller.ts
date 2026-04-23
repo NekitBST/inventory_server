@@ -9,7 +9,9 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
+  ValidationPipe,
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
@@ -21,6 +23,7 @@ import {
   ApiConflictResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiQuery,
   ApiTags,
 } from '@nestjs/swagger';
 import { UsersService } from './users.service';
@@ -31,6 +34,8 @@ import { UserWithRoleResponseDto } from './dto/user-with-role-response.dto';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../../common/constants/roles';
+import { FindUsersQueryDto } from './dto/find-users-query.dto';
+import { UserListResponseDto } from './dto/user-list-response.dto';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -43,12 +48,26 @@ export class UsersController {
   @ApiOperation({
     summary: 'Список пользователей (только для администраторов)',
   })
-  @ApiOkResponse({ type: UserWithRoleResponseDto, isArray: true })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
+  @ApiQuery({ name: 'search', required: false, example: 'Иван' })
+  @ApiQuery({ name: 'roleId', required: false, example: 2 })
+  @ApiQuery({ name: 'isActive', required: false, example: true })
+  @ApiOkResponse({ type: UserListResponseDto })
   @ApiUnauthorizedResponse({ description: 'Токен невалиден' })
   @ApiForbiddenResponse({ description: 'Доступ запрещен' })
   @Get()
-  findAll() {
-    return this.usersService.findAll();
+  findAll(
+    @Query(
+      new ValidationPipe({
+        transform: true,
+        whitelist: true,
+        forbidNonWhitelisted: true,
+      }),
+    )
+    query: FindUsersQueryDto,
+  ) {
+    return this.usersService.findAll(query);
   }
 
   @ApiOperation({ summary: 'Пользователь по ID (только для администраторов)' })

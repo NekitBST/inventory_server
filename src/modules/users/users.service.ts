@@ -10,6 +10,7 @@ import { User } from './entities/user.entity';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { RedisService } from '../../redis/redis.service';
+import { FindUsersQueryDto } from './dto/find-users-query.dto';
 
 @Injectable()
 export class UsersService {
@@ -19,8 +20,35 @@ export class UsersService {
     private readonly redis: RedisService,
   ) {}
 
-  async findAll(): Promise<User[]> {
-    return this.usersRepo.find({ relations: ['role'] });
+  async findAll(params: FindUsersQueryDto) {
+    const page = params.page < 1 ? 1 : params.page;
+    const limit =
+      params.limit < 1 ? 20 : params.limit > 100 ? 100 : params.limit;
+    const offset = (page - 1) * limit;
+
+    const qb = this.usersRepo
+      .createQueryBuilder('user')
+      .leftJoinAndSelect('user.role', 'role')
+      .orderBy('user.createdAt', 'DESC')
+      .skip(offset)
+      .take(limit);
+
+    if (params.search && params.search.trim().length > 0) {
+      qb.andWhere('user.fullName ILIKE :search', {
+        search: `%${params.search.trim()}%`,
+      });
+    }
+
+    if (params.roleId !== undefined) {
+      qb.andWhere('user.roleId = :roleId', { roleId: params.roleId });
+    }
+
+    if (params.isActive !== undefined) {
+      qb.andWhere('user.isActive = :isActive', { isActive: params.isActive });
+    }
+
+    const [items, total] = await qb.getManyAndCount();
+    return { items, total, page, limit };
   }
 
   async findById(id: string): Promise<User> {

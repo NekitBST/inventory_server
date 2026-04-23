@@ -6,6 +6,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { QueryFailedError, Repository } from 'typeorm';
 import { Inventory } from './entities/inventory.entity';
+import { FindInventoriesQueryDto } from './dto/find-inventories-query.dto';
 
 @Injectable()
 export class InventoriesService {
@@ -48,13 +49,37 @@ export class InventoriesService {
     }
   }
 
-  async findAll(): Promise<Inventory[]> {
-    const inventories = await this.inventoriesRepo.find({
-      relations: ['createdByUser'],
-      order: { startedAt: 'DESC' },
-    });
+  async findAll(params: FindInventoriesQueryDto) {
+    const page = params.page < 1 ? 1 : params.page;
+    const limit =
+      params.limit < 1 ? 20 : params.limit > 100 ? 100 : params.limit;
+    const offset = (page - 1) * limit;
+    const sortOrder = params.sortOrder === 'ASC' ? 'ASC' : 'DESC';
 
-    return inventories.map((inventory) => this.toInventoryWithUser(inventory));
+    const qb = this.inventoriesRepo
+      .createQueryBuilder('inventory')
+      .leftJoinAndSelect('inventory.createdByUser', 'createdByUser')
+      .orderBy('inventory.startedAt', sortOrder)
+      .skip(offset)
+      .take(limit);
+
+    if (params.status !== undefined) {
+      qb.andWhere('inventory.status = :status', { status: params.status });
+    }
+
+    if (params.search && params.search.trim().length > 0) {
+      qb.andWhere('createdByUser.fullName ILIKE :search', {
+        search: `%${params.search.trim()}%`,
+      });
+    }
+
+    const [items, total] = await qb.getManyAndCount();
+    return {
+      items: items.map((inventory) => this.toInventoryWithUser(inventory)),
+      total,
+      page,
+      limit,
+    };
   }
 
   async findById(id: string): Promise<Inventory> {
