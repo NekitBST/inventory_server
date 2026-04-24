@@ -21,5 +21,7 @@
     "noImplicitAny": false,
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false
-  }
+  },
+  "include": ["src/**/*.ts", "migrations/**/*.ts", "test/**/*.ts"],
+  "exclude": ["web-panel", "dist", "node_modules"]
 }
