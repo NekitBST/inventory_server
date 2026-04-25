@@ -7,6 +7,7 @@ import { Button } from '../../components/ui/Button';
 import { Pagination } from '../../components/ui/Pagination';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { useToast } from '../../app/toast-provider';
+import { getApiErrorMessage } from '../../lib/api-error';
 import { usersApi } from './api';
 import type {
   UserCreatePayload,
@@ -66,9 +67,11 @@ export function UsersPage() {
       pushToast({ title: 'Пользователь деактивирован', tone: 'warning' });
       await queryClient.invalidateQueries({ queryKey: ['users'] });
     },
-    onError: () => {
+    onError: (error) => {
+      const message = getApiErrorMessage(error);
       pushToast({
         title: 'Не удалось деактивировать пользователя',
+        description: message,
         tone: 'error',
       });
     },
@@ -80,9 +83,11 @@ export function UsersPage() {
       pushToast({ title: 'Пользователь восстановлен', tone: 'success' });
       await queryClient.invalidateQueries({ queryKey: ['users'] });
     },
-    onError: () => {
+    onError: (error) => {
+      const message = getApiErrorMessage(error);
       pushToast({
         title: 'Не удалось восстановить пользователя',
+        description: message,
         tone: 'error',
       });
     },
@@ -96,9 +101,14 @@ export function UsersPage() {
       pushToast({ title: 'Пользователь создан', tone: 'success' });
       await queryClient.invalidateQueries({ queryKey: ['users'] });
     },
-    onError: () => {
-      setFormError('Не удалось создать пользователя');
-      pushToast({ title: 'Ошибка создания пользователя', tone: 'error' });
+    onError: (error) => {
+      const message = getApiErrorMessage(error);
+      setFormError(message);
+      pushToast({
+        title: 'Ошибка создания пользователя',
+        description: message,
+        tone: 'error',
+      });
     },
   });
 
@@ -112,9 +122,14 @@ export function UsersPage() {
       pushToast({ title: 'Пользователь обновлён', tone: 'info' });
       await queryClient.invalidateQueries({ queryKey: ['users'] });
     },
-    onError: () => {
-      setFormError('Не удалось обновить пользователя');
-      pushToast({ title: 'Ошибка обновления пользователя', tone: 'error' });
+    onError: (error) => {
+      const message = getApiErrorMessage(error);
+      setFormError(message);
+      pushToast({
+        title: 'Ошибка обновления пользователя',
+        description: message,
+        tone: 'error',
+      });
     },
   });
 

@@ -9,6 +9,7 @@ import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { useToast } from '../../app/toast-provider';
 import { equipmentApi } from './api';
 import { referencesApi } from '../references/api';
+import { getApiErrorMessage } from '../../lib/api-error';
 import type { Equipment, EquipmentPayload } from '../../types/entities';
 
 type EquipmentFormState = {
@@ -84,8 +85,13 @@ export function EquipmentPage() {
       pushToast({ title: 'Оборудование удалено', tone: 'warning' });
       await queryClient.invalidateQueries({ queryKey: ['equipment'] });
     },
-    onError: () => {
-      pushToast({ title: 'Не удалось удалить оборудование', tone: 'error' });
+    onError: (error) => {
+      const message = getApiErrorMessage(error);
+      pushToast({
+        title: 'Не удалось удалить оборудование',
+        description: message,
+        tone: 'error',
+      });
     },
   });
 
@@ -97,9 +103,14 @@ export function EquipmentPage() {
       pushToast({ title: 'Оборудование создано', tone: 'success' });
       await queryClient.invalidateQueries({ queryKey: ['equipment'] });
     },
-    onError: () => {
-      setFormError('Не удалось создать оборудование');
-      pushToast({ title: 'Ошибка создания оборудования', tone: 'error' });
+    onError: (error) => {
+      const message = getApiErrorMessage(error);
+      setFormError(message);
+      pushToast({
+        title: 'Ошибка создания оборудования',
+        description: message,
+        tone: 'error',
+      });
     },
   });
 
@@ -113,9 +124,14 @@ export function EquipmentPage() {
       pushToast({ title: 'Оборудование обновлено', tone: 'info' });
       await queryClient.invalidateQueries({ queryKey: ['equipment'] });
     },
-    onError: () => {
-      setFormError('Не удалось обновить оборудование');
-      pushToast({ title: 'Ошибка обновления оборудования', tone: 'error' });
+    onError: (error) => {
+      const message = getApiErrorMessage(error);
+      setFormError(message);
+      pushToast({
+        title: 'Ошибка обновления оборудования',
+        description: message,
+        tone: 'error',
+      });
     },
   });
 

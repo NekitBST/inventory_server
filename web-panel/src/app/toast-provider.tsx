@@ -95,9 +95,10 @@ export function ToastProvider({ children }: PropsWithChildren) {
               <button
                 type="button"
                 className="rounded px-1 text-xs opacity-70 transition hover:opacity-100"
+                aria-label="Закрыть уведомление"
                 onClick={() => removeToast(toast.id)}
               >
-                Закрыть
+                ×
               </button>
             </div>
           </section>

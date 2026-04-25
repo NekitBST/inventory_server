@@ -6,6 +6,7 @@ import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { authApi } from './api';
 import { useToast } from '../../app/toast-provider';
+import { getApiErrorMessage } from '../../lib/api-error';
 
 const schema = z
   .object({
@@ -49,10 +50,11 @@ export function ChangePasswordPage() {
       });
       reset();
       pushToast({ title: 'Пароль успешно изменён', tone: 'success' });
-    } catch {
+    } catch (error) {
+      const message = getApiErrorMessage(error);
       pushToast({
         title: 'Не удалось изменить пароль',
-        description: 'Проверьте текущий пароль и повторите попытку.',
+        description: message,
         tone: 'error',
       });
     }

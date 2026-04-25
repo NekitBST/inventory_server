@@ -7,6 +7,7 @@ import { Button } from '../../components/ui/Button';
 import { Pagination } from '../../components/ui/Pagination';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { useToast } from '../../app/toast-provider';
+import { getApiErrorMessage } from '../../lib/api-error';
 import { inventoriesApi } from './api';
 import { Badge } from '../../components/ui/Badge';
 
@@ -51,8 +52,13 @@ export function InventoriesPage() {
       pushToast({ title: 'Инвентаризация закрыта', tone: 'success' });
       await queryClient.invalidateQueries({ queryKey: ['inventories'] });
     },
-    onError: () => {
-      pushToast({ title: 'Не удалось закрыть инвентаризацию', tone: 'error' });
+    onError: (error) => {
+      const message = getApiErrorMessage(error);
+      pushToast({
+        title: 'Не удалось завершить инвентаризацию',
+        description: message,
+        tone: 'error',
+      });
     },
   });
 

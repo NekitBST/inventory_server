@@ -5,6 +5,7 @@ import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { useToast } from '../../app/toast-provider';
+import { getApiErrorMessage } from '../../lib/api-error';
 import { referencesApi, type ReferenceModule } from './api';
 
 type ReferencesPageProps = {
@@ -37,9 +38,14 @@ export function ReferencesPage({ module, title }: ReferencesPageProps) {
       pushToast({ title: 'Запись добавлена', tone: 'success' });
       await queryClient.invalidateQueries({ queryKey });
     },
-    onError: () => {
-      setError('Не удалось создать запись');
-      pushToast({ title: 'Ошибка добавления записи', tone: 'error' });
+    onError: (error) => {
+      const message = getApiErrorMessage(error);
+      setError(message);
+      pushToast({
+        title: 'Ошибка добавления записи',
+        description: message,
+        tone: 'error',
+      });
     },
   });
 
@@ -50,8 +56,13 @@ export function ReferencesPage({ module, title }: ReferencesPageProps) {
       pushToast({ title: 'Запись удалена', tone: 'warning' });
       await queryClient.invalidateQueries({ queryKey });
     },
-    onError: () => {
-      pushToast({ title: 'Ошибка удаления записи', tone: 'error' });
+    onError: (error) => {
+      const message = getApiErrorMessage(error);
+      pushToast({
+        title: 'Ошибка удаления записи',
+        description: message,
+        tone: 'error',
+      });
     },
   });
 
@@ -65,9 +76,14 @@ export function ReferencesPage({ module, title }: ReferencesPageProps) {
       pushToast({ title: 'Запись обновлена', tone: 'info' });
       await queryClient.invalidateQueries({ queryKey });
     },
-    onError: () => {
-      setError('Не удалось обновить запись');
-      pushToast({ title: 'Ошибка обновления записи', tone: 'error' });
+    onError: (error) => {
+      const message = getApiErrorMessage(error);
+      setError(message);
+      pushToast({
+        title: 'Ошибка обновления записи',
+        description: message,
+        tone: 'error',
+      });
     },
   });
 
