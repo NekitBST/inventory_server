@@ -5,17 +5,45 @@ import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Button } from '../../components/ui/Button';
 import { Pagination } from '../../components/ui/Pagination';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { useToast } from '../../app/toast-provider';
 import { equipmentApi } from './api';
 import { referencesApi } from '../references/api';
+import type { Equipment, EquipmentPayload } from '../../types/entities';
+
+type EquipmentFormState = {
+  inventoryNumber: string;
+  name: string;
+  serialNumber: string;
+  statusId: string;
+  typeId: string;
+  locationId: string;
+};
+
+const initialFormState: EquipmentFormState = {
+  inventoryNumber: '',
+  name: '',
+  serialNumber: '',
+  statusId: '',
+  typeId: '',
+  locationId: '',
+};
 
 export function EquipmentPage() {
   const queryClient = useQueryClient();
+  const { pushToast } = useToast();
 
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [statusId, setStatusId] = useState<number | undefined>();
   const [typeId, setTypeId] = useState<number | undefined>();
   const [locationId, setLocationId] = useState<number | undefined>();
+  const [form, setForm] = useState<EquipmentFormState>(initialFormState);
+  const [editingEquipmentId, setEditingEquipmentId] = useState<string | null>(
+    null,
+  );
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [formError, setFormError] = useState('');
 
   const filters = useMemo(
     () => ({
@@ -52,12 +80,204 @@ export function EquipmentPage() {
   const removeMutation = useMutation({
     mutationFn: (id: string) => equipmentApi.remove(id),
     onSuccess: async () => {
+      setPendingDeleteId(null);
+      pushToast({ title: 'Оборудование удалено', tone: 'warning' });
       await queryClient.invalidateQueries({ queryKey: ['equipment'] });
+    },
+    onError: () => {
+      pushToast({ title: 'Не удалось удалить оборудование', tone: 'error' });
     },
   });
 
+  const createMutation = useMutation({
+    mutationFn: (payload: EquipmentPayload) => equipmentApi.create(payload),
+    onSuccess: async () => {
+      setForm(initialFormState);
+      setFormError('');
+      pushToast({ title: 'Оборудование создано', tone: 'success' });
+      await queryClient.invalidateQueries({ queryKey: ['equipment'] });
+    },
+    onError: () => {
+      setFormError('Не удалось создать оборудование');
+      pushToast({ title: 'Ошибка создания оборудования', tone: 'error' });
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: EquipmentPayload }) =>
+      equipmentApi.update(id, payload),
+    onSuccess: async () => {
+      setEditingEquipmentId(null);
+      setForm(initialFormState);
+      setFormError('');
+      pushToast({ title: 'Оборудование обновлено', tone: 'info' });
+      await queryClient.invalidateQueries({ queryKey: ['equipment'] });
+    },
+    onError: () => {
+      setFormError('Не удалось обновить оборудование');
+      pushToast({ title: 'Ошибка обновления оборудования', tone: 'error' });
+    },
+  });
+
+  const isSubmitting = createMutation.isPending || updateMutation.isPending;
+
+  const handleStartEdit = (item: Equipment) => {
+    setEditingEquipmentId(item.id);
+    setForm({
+      inventoryNumber: item.inventoryNumber,
+      name: item.name,
+      serialNumber: item.serialNumber ?? '',
+      statusId: String(item.statusId),
+      typeId: String(item.typeId),
+      locationId: item.locationId ? String(item.locationId) : '',
+    });
+    setFormError('');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingEquipmentId(null);
+    setForm(initialFormState);
+    setFormError('');
+  };
+
+  const handleSubmitForm = async () => {
+    const inventoryNumber = form.inventoryNumber.trim();
+    const name = form.name.trim();
+    const serialNumber = form.serialNumber.trim();
+
+    if (!inventoryNumber || !name || !form.statusId || !form.typeId) {
+      setFormError('Заполните обязательные поля: номер, название, статус, тип');
+      return;
+    }
+
+    const payload: EquipmentPayload = {
+      inventoryNumber,
+      name,
+      serialNumber: serialNumber || null,
+      statusId: Number(form.statusId),
+      typeId: Number(form.typeId),
+      locationId: form.locationId ? Number(form.locationId) : null,
+    };
+
+    if (editingEquipmentId) {
+      await updateMutation.mutateAsync({ id: editingEquipmentId, payload });
+      return;
+    }
+
+    await createMutation.mutateAsync(payload);
+  };
+
   return (
     <Card title="Оборудование">
+      <section className="mb-5 rounded-md border border-gray-200 p-3">
+        <h3 className="mb-3 text-sm font-semibold text-gray-900">
+          {editingEquipmentId
+            ? 'Редактирование оборудования'
+            : 'Новое оборудование'}
+        </h3>
+
+        <div className="grid gap-2 md:grid-cols-3">
+          <Input
+            placeholder="Инвентарный номер*"
+            value={form.inventoryNumber}
+            onChange={(event) =>
+              setForm((previous) => ({
+                ...previous,
+                inventoryNumber: event.target.value,
+              }))
+            }
+          />
+
+          <Input
+            placeholder="Наименование*"
+            value={form.name}
+            onChange={(event) =>
+              setForm((previous) => ({ ...previous, name: event.target.value }))
+            }
+          />
+
+          <Input
+            placeholder="Серийный номер"
+            value={form.serialNumber}
+            onChange={(event) =>
+              setForm((previous) => ({
+                ...previous,
+                serialNumber: event.target.value,
+              }))
+            }
+          />
+
+          <Select
+            value={form.statusId}
+            onChange={(event) =>
+              setForm((previous) => ({
+                ...previous,
+                statusId: event.target.value,
+              }))
+            }
+          >
+            <option value="">Статус*</option>
+            {statusesQuery.data?.map((status) => (
+              <option key={status.id} value={status.id}>
+                {status.name}
+              </option>
+            ))}
+          </Select>
+
+          <Select
+            value={form.typeId}
+            onChange={(event) =>
+              setForm((previous) => ({
+                ...previous,
+                typeId: event.target.value,
+              }))
+            }
+          >
+            <option value="">Тип*</option>
+            {typesQuery.data?.map((type) => (
+              <option key={type.id} value={type.id}>
+                {type.name}
+              </option>
+            ))}
+          </Select>
+
+          <Select
+            value={form.locationId}
+            onChange={(event) =>
+              setForm((previous) => ({
+                ...previous,
+                locationId: event.target.value,
+              }))
+            }
+          >
+            <option value="">Локация (опционально)</option>
+            {locationsQuery.data?.map((location) => (
+              <option key={location.id} value={location.id}>
+                {location.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+
+        {formError ? (
+          <p className="mt-2 text-sm text-red-600">{formError}</p>
+        ) : null}
+
+        <div className="mt-3 flex gap-2">
+          <Button
+            onClick={() => void handleSubmitForm()}
+            disabled={isSubmitting}
+          >
+            {editingEquipmentId ? 'Сохранить изменения' : 'Создать'}
+          </Button>
+          {editingEquipmentId ? (
+            <Button variant="secondary" onClick={handleCancelEdit}>
+              Отмена
+            </Button>
+          ) : null}
+        </div>
+      </section>
+
       <div className="mb-4 grid gap-2 md:grid-cols-4">
         <Input
           placeholder="Поиск по названию/номеру"
@@ -141,13 +361,22 @@ export function EquipmentPage() {
                 <td className="px-3 py-2">{item.type?.name ?? '-'}</td>
                 <td className="px-3 py-2">{item.location?.name ?? '-'}</td>
                 <td className="px-3 py-2">
-                  <Button
-                    variant="danger"
-                    className="px-2 py-1 text-xs"
-                    onClick={() => removeMutation.mutate(item.id)}
-                  >
-                    Удалить
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="secondary"
+                      className="px-2 py-1 text-xs"
+                      onClick={() => handleStartEdit(item)}
+                    >
+                      Изменить
+                    </Button>
+                    <Button
+                      variant="danger"
+                      className="px-2 py-1 text-xs"
+                      onClick={() => setPendingDeleteId(item.id)}
+                    >
+                      Удалить
+                    </Button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -170,6 +399,20 @@ export function EquipmentPage() {
           onPageChange={setPage}
         />
       ) : null}
+
+      <ConfirmDialog
+        isOpen={Boolean(pendingDeleteId)}
+        title="Удалить оборудование?"
+        description="Запись будет скрыта (soft delete) и исчезнет из активного списка."
+        confirmText="Удалить"
+        tone="danger"
+        isProcessing={removeMutation.isPending}
+        onCancel={() => setPendingDeleteId(null)}
+        onConfirm={() => {
+          if (!pendingDeleteId) return;
+          removeMutation.mutate(pendingDeleteId);
+        }}
+      />
     </Card>
   );
 }

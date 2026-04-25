@@ -5,11 +5,14 @@ import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
 import { Button } from '../../components/ui/Button';
 import { Pagination } from '../../components/ui/Pagination';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { useToast } from '../../app/toast-provider';
 import { inventoriesApi } from './api';
 import { Badge } from '../../components/ui/Badge';
 
 export function InventoriesPage() {
   const queryClient = useQueryClient();
+  const { pushToast } = useToast();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<'OPEN' | 'CLOSED' | ''>('');
@@ -17,6 +20,13 @@ export function InventoriesPage() {
   const [selectedInventoryId, setSelectedInventoryId] = useState<string | null>(
     null,
   );
+  const [recordsPage, setRecordsPage] = useState(1);
+  const [recordsLimit, setRecordsLimit] = useState(30);
+  const [recordsSearch, setRecordsSearch] = useState('');
+  const [recordsResultStatus, setRecordsResultStatus] = useState<
+    'FOUND' | 'DAMAGED' | ''
+  >('');
+  const [pendingCloseId, setPendingCloseId] = useState<string | null>(null);
 
   const filters = useMemo(
     () => ({
@@ -37,19 +47,41 @@ export function InventoriesPage() {
   const closeMutation = useMutation({
     mutationFn: (id: string) => inventoriesApi.close(id),
     onSuccess: async () => {
+      setPendingCloseId(null);
+      pushToast({ title: 'Инвентаризация закрыта', tone: 'success' });
       await queryClient.invalidateQueries({ queryKey: ['inventories'] });
+    },
+    onError: () => {
+      pushToast({ title: 'Не удалось закрыть инвентаризацию', tone: 'error' });
     },
   });
 
   const recordsQuery = useQuery({
-    queryKey: ['inventory-records', selectedInventoryId],
+    queryKey: [
+      'inventory-records',
+      selectedInventoryId,
+      recordsPage,
+      recordsLimit,
+      recordsSearch,
+      recordsResultStatus,
+    ],
     queryFn: () =>
       inventoriesApi.getRecords(selectedInventoryId as string, {
-        page: 1,
-        limit: 30,
+        page: recordsPage,
+        limit: recordsLimit,
+        search: recordsSearch || undefined,
+        resultStatus: recordsResultStatus || undefined,
       }),
     enabled: Boolean(selectedInventoryId),
   });
+
+  const handleOpenRecords = (inventoryId: string) => {
+    setSelectedInventoryId(inventoryId);
+    setRecordsPage(1);
+    setRecordsLimit(30);
+    setRecordsSearch('');
+    setRecordsResultStatus('');
+  };
 
   return (
     <Card title="Инвентаризации">
@@ -126,7 +158,7 @@ export function InventoriesPage() {
                     <Button
                       variant="secondary"
                       className="px-2 py-1 text-xs"
-                      onClick={() => setSelectedInventoryId(inventory.id)}
+                      onClick={() => handleOpenRecords(inventory.id)}
                     >
                       Записи
                     </Button>
@@ -134,7 +166,7 @@ export function InventoriesPage() {
                       <Button
                         variant="primary"
                         className="px-2 py-1 text-xs"
-                        onClick={() => closeMutation.mutate(inventory.id)}
+                        onClick={() => setPendingCloseId(inventory.id)}
                       >
                         Закрыть
                       </Button>
@@ -168,6 +200,46 @@ export function InventoriesPage() {
             </Button>
           </div>
 
+          <div className="mb-3 grid gap-2 md:grid-cols-4">
+            <Input
+              placeholder="Поиск по названию оборудования"
+              value={recordsSearch}
+              onChange={(event) => {
+                setRecordsPage(1);
+                setRecordsSearch(event.target.value);
+              }}
+            />
+
+            <Select
+              value={recordsResultStatus}
+              onChange={(event) => {
+                setRecordsPage(1);
+                setRecordsResultStatus(
+                  event.target.value as 'FOUND' | 'DAMAGED' | '',
+                );
+              }}
+            >
+              <option value="">Любой результат</option>
+              <option value="FOUND">FOUND</option>
+              <option value="DAMAGED">DAMAGED</option>
+            </Select>
+
+            <Select
+              value={String(recordsLimit)}
+              onChange={(event) => {
+                setRecordsPage(1);
+                setRecordsLimit(Number(event.target.value));
+              }}
+            >
+              <option value="10">10 на страницу</option>
+              <option value="30">30 на страницу</option>
+              <option value="50">50 на страницу</option>
+              <option value="100">100 на страницу</option>
+            </Select>
+
+            <div className="h-10" />
+          </div>
+
           <div className="divide-y divide-gray-200 rounded-md border border-gray-200 bg-white">
             {recordsQuery.data?.items.map((record) => (
               <div key={record.id} className="px-3 py-2">
@@ -198,8 +270,31 @@ export function InventoriesPage() {
               </div>
             ) : null}
           </div>
+
+          {recordsQuery.data ? (
+            <Pagination
+              page={recordsQuery.data.page}
+              limit={recordsQuery.data.limit}
+              total={recordsQuery.data.total}
+              onPageChange={setRecordsPage}
+            />
+          ) : null}
         </section>
       ) : null}
+
+      <ConfirmDialog
+        isOpen={Boolean(pendingCloseId)}
+        title="Закрыть инвентаризацию?"
+        description="После закрытия нельзя добавлять или изменять записи в этой инвентаризации."
+        confirmText="Закрыть"
+        tone="primary"
+        isProcessing={closeMutation.isPending}
+        onCancel={() => setPendingCloseId(null)}
+        onConfirm={() => {
+          if (!pendingCloseId) return;
+          closeMutation.mutate(pendingCloseId);
+        }}
+      />
     </Card>
   );
 }

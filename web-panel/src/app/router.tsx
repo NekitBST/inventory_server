@@ -2,6 +2,7 @@ import { createBrowserRouter } from 'react-router-dom';
 import { AppLayout } from './layouts/app-layout';
 import { ProtectedRoute } from './routes/protected-route';
 import { LoginPage } from '../features/auth/login-page';
+import { ChangePasswordPage } from '../features/auth/change-password-page';
 import { DashboardPage } from '../features/dashboard/dashboard-page';
 import { EquipmentPage } from '../features/equipment/equipment-page';
 import { UsersPage } from '../features/users/users-page';
@@ -20,6 +21,7 @@ export const router = createBrowserRouter([
         element: <AppLayout />,
         children: [
           { path: '/', element: <DashboardPage /> },
+          { path: '/change-password', element: <ChangePasswordPage /> },
           { path: '/equipment', element: <EquipmentPage /> },
           { path: '/inventories', element: <InventoriesPage /> },
           {

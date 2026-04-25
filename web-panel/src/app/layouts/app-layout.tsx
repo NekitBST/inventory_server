@@ -1,7 +1,10 @@
 import { NavLink, Outlet } from 'react-router-dom';
+import { useState } from 'react';
 import type { RoleName } from '../../types/common';
 import { useAuth } from '../../features/auth/useAuth';
 import { Button } from '../../components/ui/Button';
+import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
+import { useToast } from '../toast-provider';
 
 type NavItem = {
   to: string;
@@ -11,6 +14,7 @@ type NavItem = {
 
 const navItems: NavItem[] = [
   { to: '/', label: 'Главная', roles: ['ADMIN', 'USER'] },
+  { to: '/change-password', label: 'Смена пароля', roles: ['ADMIN', 'USER'] },
   { to: '/equipment', label: 'Оборудование', roles: ['ADMIN', 'USER'] },
   { to: '/inventories', label: 'Инвентаризации', roles: ['ADMIN', 'USER'] },
   { to: '/locations', label: 'Локации', roles: ['ADMIN', 'USER'] },
@@ -29,9 +33,34 @@ const navItems: NavItem[] = [
 
 export function AppLayout() {
   const { user, logout, logoutAll } = useAuth();
+  const { pushToast } = useToast();
+  const [confirmMode, setConfirmMode] = useState<
+    'logout' | 'logout-all' | null
+  >(null);
   const role = user?.role?.name ?? 'USER';
 
   const filteredNavItems = navItems.filter((item) => item.roles.includes(role));
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      pushToast({ title: 'Сессия завершена', tone: 'info' });
+    } finally {
+      setConfirmMode(null);
+    }
+  };
+
+  const handleLogoutAll = async () => {
+    try {
+      await logoutAll();
+      pushToast({
+        title: 'Выход выполнен на всех устройствах',
+        tone: 'warning',
+      });
+    } finally {
+      setConfirmMode(null);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -65,10 +94,13 @@ export function AppLayout() {
           </nav>
 
           <div className="flex flex-col gap-2">
-            <Button variant="secondary" onClick={() => void logoutAll()}>
+            <Button
+              variant="secondary"
+              onClick={() => setConfirmMode('logout-all')}
+            >
               Выйти на всех устройствах
             </Button>
-            <Button variant="danger" onClick={() => void logout()}>
+            <Button variant="danger" onClick={() => setConfirmMode('logout')}>
               Выйти
             </Button>
           </div>
@@ -78,6 +110,26 @@ export function AppLayout() {
           <Outlet />
         </main>
       </div>
+
+      <ConfirmDialog
+        isOpen={confirmMode === 'logout'}
+        title="Выйти из аккаунта?"
+        description="Текущая сессия будет завершена на этом устройстве."
+        confirmText="Выйти"
+        tone="danger"
+        onCancel={() => setConfirmMode(null)}
+        onConfirm={() => void handleLogout()}
+      />
+
+      <ConfirmDialog
+        isOpen={confirmMode === 'logout-all'}
+        title="Выйти на всех устройствах?"
+        description="Все активные сессии будут завершены."
+        confirmText="Выйти везде"
+        tone="danger"
+        onCancel={() => setConfirmMode(null)}
+        onConfirm={() => void handleLogoutAll()}
+      />
     </div>
   );
 }
