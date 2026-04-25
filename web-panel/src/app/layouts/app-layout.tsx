@@ -38,6 +38,7 @@ export function AppLayout() {
     'logout' | 'logout-all' | null
   >(null);
   const role = user?.role?.name ?? 'USER';
+  const roleLabel = role === 'ADMIN' ? 'Администратор' : 'Пользователь';
 
   const filteredNavItems = navItems.filter((item) => item.roles.includes(role));
 
@@ -69,9 +70,14 @@ export function AppLayout() {
           <h1 className="mb-1 text-lg font-semibold text-gray-900">
             Inventory Panel
           </h1>
-          <p className="mb-4 text-sm text-gray-500">
-            {user?.fullName} ({role})
-          </p>
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <p className="truncate text-sm font-medium text-gray-700">
+              {user?.fullName}
+            </p>
+            <span className="inline-flex shrink-0 rounded-full border border-[rgba(92,155,224,0.32)] bg-[rgba(150,199,248,0.26)] px-2.5 py-1 text-xs font-medium text-[#2f5f96]">
+              {roleLabel}
+            </span>
+          </div>
 
           <nav className="mb-6 flex flex-col gap-1">
             {filteredNavItems.map((item) => (

@@ -73,9 +73,9 @@ export function Select({
       <button
         type="button"
         className={clsx(
-          'flex h-10 w-full items-center justify-between rounded-xl border px-3 text-sm text-slate-800 outline-none transition',
+          'flex h-10 w-full items-center justify-between rounded-xl border px-3 text-sm text-slate-800 outline-none transition-all duration-200',
           isOpen
-            ? 'border-sky-500 bg-sky-50 ring-2 ring-sky-200'
+            ? 'border-[#8ab7e6] bg-[rgba(230,241,253,0.72)] ring-2 ring-[rgba(152,193,236,0.24)]'
             : 'border-slate-300 bg-slate-50 hover:border-slate-400',
           disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
         )}
@@ -89,7 +89,7 @@ export function Select({
         </span>
         <span
           className={clsx(
-            'ml-2 text-xs text-slate-600 transition',
+            'ml-2 text-xs text-slate-600 transition-transform duration-200',
             isOpen && 'rotate-180',
           )}
         >
@@ -97,33 +97,38 @@ export function Select({
         </span>
       </button>
 
-      {isOpen ? (
-        <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-30 overflow-hidden rounded-xl border border-slate-300 bg-slate-100 shadow-lg">
-          <ul className="max-h-64 overflow-auto p-1">
-            {options.map((option) => (
-              <li key={option.value}>
-                <button
-                  type="button"
-                  className={clsx(
-                    'flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition',
-                    selectedOption?.value === option.value
-                      ? 'bg-slate-300 font-medium text-slate-900'
-                      : 'bg-slate-200 text-slate-800 hover:bg-slate-300',
-                    option.disabled && 'cursor-not-allowed opacity-50',
-                  )}
-                  disabled={option.disabled}
-                  onClick={() => {
-                    emitChange(option.value);
-                    setIsOpen(false);
-                  }}
-                >
-                  <span className="truncate">{option.label}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
+      <div
+        className={clsx(
+          'absolute left-0 right-0 top-[calc(100%+6px)] z-30 overflow-hidden rounded-xl border border-[#c7daf0] bg-[#f2f8ff] shadow-lg transition-all duration-200 ease-out',
+          isOpen
+            ? 'pointer-events-auto max-h-72 translate-y-0 opacity-100'
+            : 'pointer-events-none max-h-0 -translate-y-1 opacity-0',
+        )}
+      >
+        <ul className="max-h-64 overflow-auto p-1">
+          {options.map((option) => (
+            <li key={option.value}>
+              <button
+                type="button"
+                className={clsx(
+                  'flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition-colors duration-150',
+                  selectedOption?.value === option.value
+                    ? 'bg-[rgba(173,207,241,0.36)] font-medium text-slate-900'
+                    : 'bg-[rgba(244,247,252,0.95)] text-slate-800 hover:bg-[rgba(173,207,241,0.24)]',
+                  option.disabled && 'cursor-not-allowed opacity-50',
+                )}
+                disabled={option.disabled}
+                onClick={() => {
+                  emitChange(option.value);
+                  setIsOpen(false);
+                }}
+              >
+                <span className="truncate">{option.label}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
 
       <select
         className="hidden"
