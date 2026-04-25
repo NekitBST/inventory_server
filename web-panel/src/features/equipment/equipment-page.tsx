@@ -341,11 +341,12 @@ export function EquipmentPage() {
       </div>
 
       <div className="overflow-x-auto rounded-md border border-gray-200">
-        <table className="w-full min-w-[860px] divide-y divide-gray-200 text-sm">
+        <table className="w-full min-w-[980px] divide-y divide-gray-200 text-sm">
           <thead className="bg-gray-50 text-left text-gray-600">
             <tr>
               <th className="px-3 py-2">Инв. номер</th>
               <th className="px-3 py-2">Наименование</th>
+              <th className="px-3 py-2">Серийный номер</th>
               <th className="px-3 py-2">Статус</th>
               <th className="px-3 py-2">Тип</th>
               <th className="px-3 py-2">Локация</th>
@@ -357,6 +358,7 @@ export function EquipmentPage() {
               <tr key={item.id}>
                 <td className="px-3 py-2">{item.inventoryNumber}</td>
                 <td className="px-3 py-2">{item.name}</td>
+                <td className="px-3 py-2">{item.serialNumber ?? '-'}</td>
                 <td className="px-3 py-2">{item.status?.name ?? '-'}</td>
                 <td className="px-3 py-2">{item.type?.name ?? '-'}</td>
                 <td className="px-3 py-2">{item.location?.name ?? '-'}</td>
@@ -382,7 +384,7 @@ export function EquipmentPage() {
             ))}
             {!equipmentQuery.isLoading && !equipmentQuery.data?.items.length ? (
               <tr>
-                <td colSpan={6} className="px-3 py-3 text-center text-gray-500">
+                <td colSpan={7} className="px-3 py-3 text-center text-gray-500">
                   Ничего не найдено
                 </td>
               </tr>

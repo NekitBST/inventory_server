@@ -79,7 +79,9 @@ export class InventoryRecordsService {
 
     const qb = this.recordsRepo
       .createQueryBuilder('record')
-      .leftJoin('equipment', 'equipment', 'equipment.id = record.equipmentId')
+      .leftJoinAndSelect('record.equipment', 'equipment')
+      .leftJoinAndSelect('equipment.type', 'equipmentType')
+      .leftJoinAndSelect('equipment.location', 'location')
       .where('record.inventoryId = :inventoryId', { inventoryId })
       .orderBy('record.scannedAt', 'DESC')
       .skip(offset)
@@ -92,13 +94,39 @@ export class InventoryRecordsService {
     }
 
     if (params.search && params.search.trim().length > 0) {
-      qb.andWhere('equipment.name ILIKE :search', {
-        search: `%${params.search.trim()}%`,
-      });
+      qb.andWhere(
+        '(equipment.name ILIKE :search OR equipment.inventoryNumber ILIKE :search)',
+        {
+          search: `%${params.search.trim()}%`,
+        },
+      );
     }
 
     const [items, total] = await qb.getManyAndCount();
-    return { items, total, page, limit };
+    const mappedItems = items.map((item) => ({
+      ...item,
+      equipment: item.equipment
+        ? {
+            id: item.equipment.id,
+            inventoryNumber: item.equipment.inventoryNumber,
+            name: item.equipment.name,
+            type: item.equipment.type
+              ? {
+                  id: item.equipment.type.id,
+                  name: item.equipment.type.name,
+                }
+              : null,
+            location: item.equipment.location
+              ? {
+                  id: item.equipment.location.id,
+                  name: item.equipment.location.name,
+                }
+              : null,
+          }
+        : null,
+    }));
+
+    return { items: mappedItems, total, page, limit };
   }
 
   async update(

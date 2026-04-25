@@ -2,8 +2,11 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import { Equipment } from '../../equipment/entities/equipment.entity';
 
 export type InventoryRecordResultStatus = 'FOUND' | 'DAMAGED';
 
@@ -17,6 +20,10 @@ export class InventoryRecord {
 
   @Column({ type: 'uuid', name: 'equipment_id' })
   equipmentId: string;
+
+  @ManyToOne(() => Equipment, { nullable: true })
+  @JoinColumn({ name: 'equipment_id' })
+  equipment?: Equipment | null;
 
   @CreateDateColumn({ name: 'scanned_at' })
   scannedAt: Date;

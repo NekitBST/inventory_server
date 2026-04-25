@@ -168,7 +168,7 @@ export function InventoriesPage() {
                         className="px-2 py-1 text-xs"
                         onClick={() => setPendingCloseId(inventory.id)}
                       >
-                        Закрыть
+                        Завершить
                       </Button>
                     ) : null}
                   </div>
@@ -244,9 +244,24 @@ export function InventoriesPage() {
             {recordsQuery.data?.items.map((record) => (
               <div key={record.id} className="px-3 py-2">
                 <div className="flex items-center justify-between text-sm">
-                  <p className="font-medium text-gray-900">
-                    {record.equipmentId}
-                  </p>
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-gray-900">
+                      {record.equipment
+                        ? `${record.equipment.inventoryNumber} - ${record.equipment.name}`
+                        : record.equipmentId}
+                    </p>
+                    {record.equipment?.type?.name ||
+                    record.equipment?.location?.name ? (
+                      <p className="truncate text-[13px] text-gray-500">
+                        {[
+                          record.equipment?.type?.name,
+                          record.equipment?.location?.name,
+                        ]
+                          .filter(Boolean)
+                          .join(' • ')}
+                      </p>
+                    ) : null}
+                  </div>
                   <Badge
                     tone={
                       record.resultStatus === 'DAMAGED' ? 'warning' : 'success'
@@ -255,7 +270,7 @@ export function InventoriesPage() {
                     {record.resultStatus}
                   </Badge>
                 </div>
-                <p className="text-xs text-gray-500">
+                <p className="text-[13px] text-gray-500">
                   {new Date(record.scannedAt).toLocaleString()}
                 </p>
                 {record.comment ? (
@@ -284,9 +299,9 @@ export function InventoriesPage() {
 
       <ConfirmDialog
         isOpen={Boolean(pendingCloseId)}
-        title="Закрыть инвентаризацию?"
-        description="После закрытия нельзя добавлять или изменять записи в этой инвентаризации."
-        confirmText="Закрыть"
+        title="Завершить инвентаризацию?"
+        description="После завершения нельзя добавлять или изменять записи в этой инвентаризации."
+        confirmText="Завершить"
         tone="primary"
         isProcessing={closeMutation.isPending}
         onCancel={() => setPendingCloseId(null)}

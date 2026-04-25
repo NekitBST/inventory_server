@@ -64,6 +64,13 @@ export type InventoryRecord = {
   id: string;
   inventoryId: string;
   equipmentId: string;
+  equipment?: {
+    id: string;
+    inventoryNumber: string;
+    name: string;
+    type?: OptionItem | null;
+    location?: OptionItem | null;
+  } | null;
   scannedAt: string;
   comment: string | null;
   resultStatus: 'FOUND' | 'DAMAGED';
