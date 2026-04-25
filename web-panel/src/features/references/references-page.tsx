@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
@@ -27,6 +27,15 @@ export function ReferencesPage({ module, title }: ReferencesPageProps) {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingName, setEditingName] = useState('');
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
+
+  useEffect(() => {
+    setPage(1);
+    setSearch('');
+    setEditingId(null);
+    setEditingName('');
+    setPendingDeleteId(null);
+    setError('');
+  }, [module]);
 
   const paginatedQueryKey = useMemo(
     () => ['reference', module, 'paged', page, search],

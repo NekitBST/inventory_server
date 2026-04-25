@@ -8,6 +8,7 @@ import { Pagination } from '../../components/ui/Pagination';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { useToast } from '../../app/toast-provider';
 import { getApiErrorMessage } from '../../lib/api-error';
+import { useAuth } from '../auth/useAuth';
 import { usersApi } from './api';
 import type {
   UserCreatePayload,
@@ -30,6 +31,7 @@ const initialFormState: UserFormState = {
 
 export function UsersPage() {
   const queryClient = useQueryClient();
+  const { user: currentUser, refreshMe } = useAuth();
   const { pushToast } = useToast();
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -41,6 +43,14 @@ export function UsersPage() {
     null,
   );
   const [formError, setFormError] = useState('');
+
+  const syncCurrentUserIfNeeded = async (affectedUserId: string) => {
+    if (currentUser?.id !== affectedUserId) return;
+    try {
+      await refreshMe();
+    } catch {
+    }
+  };
 
   const filters = useMemo(
     () => ({ page, limit: 20, search: search || undefined, roleId, isActive }),
@@ -62,16 +72,22 @@ export function UsersPage() {
 
   const deactivateMutation = useMutation({
     mutationFn: (id: string) => usersApi.deactivate(id),
-    onSuccess: async () => {
+    onSuccess: async (_, affectedUserId) => {
       setPendingDeactivateId(null);
       pushToast({ title: 'Пользователь деактивирован', tone: 'warning' });
       await queryClient.invalidateQueries({ queryKey: ['users'] });
+      await syncCurrentUserIfNeeded(affectedUserId);
     },
     onError: (error) => {
       const message = getApiErrorMessage(error);
+      const isDefaultAdminProtection = message
+        .toLowerCase()
+        .includes('дефолтного администратора');
       pushToast({
-        title: 'Не удалось деактивировать пользователя',
-        description: message,
+        title: isDefaultAdminProtection
+          ? 'Дефолтного администратора нельзя деактивировать'
+          : 'Не удалось деактивировать пользователя',
+        description: isDefaultAdminProtection ? undefined : message,
         tone: 'error',
       });
     },
@@ -79,9 +95,10 @@ export function UsersPage() {
 
   const restoreMutation = useMutation({
     mutationFn: (id: string) => usersApi.restore(id),
-    onSuccess: async () => {
+    onSuccess: async (_, affectedUserId) => {
       pushToast({ title: 'Пользователь восстановлен', tone: 'success' });
       await queryClient.invalidateQueries({ queryKey: ['users'] });
+      await syncCurrentUserIfNeeded(affectedUserId);
     },
     onError: (error) => {
       const message = getApiErrorMessage(error);
@@ -115,12 +132,13 @@ export function UsersPage() {
   const updateMutation = useMutation({
     mutationFn: ({ id, payload }: { id: string; payload: UserUpdatePayload }) =>
       usersApi.update(id, payload),
-    onSuccess: async () => {
+    onSuccess: async (_, variables) => {
       setEditingUserId(null);
       setForm(initialFormState);
       setFormError('');
       pushToast({ title: 'Пользователь обновлён', tone: 'info' });
       await queryClient.invalidateQueries({ queryKey: ['users'] });
+      await syncCurrentUserIfNeeded(variables.id);
     },
     onError: (error) => {
       const message = getApiErrorMessage(error);
@@ -342,7 +360,14 @@ export function UsersPage() {
           </thead>
           <tbody className="divide-y divide-gray-100 bg-white">
             {usersQuery.data?.items.map((user) => (
-              <tr key={user.id}>
+              <tr
+                key={user.id}
+                className={
+                  user.isActive
+                    ? undefined
+                    : 'bg-rose-50/70 ring-1 ring-inset ring-rose-100'
+                }
+              >
                 <td className="px-3 py-2">{user.fullName}</td>
                 <td className="px-3 py-2">{user.email}</td>
                 <td className="px-3 py-2">{user.role?.name ?? user.roleId}</td>

@@ -98,6 +98,16 @@ export class UsersService {
 
   async remove(id: string): Promise<void> {
     const user = await this.findById(id);
+    const defaultAdminLogin = process.env.ADMIN_LOGIN?.trim().toLowerCase();
+
+    if (
+      defaultAdminLogin &&
+      user.email.trim().toLowerCase() === defaultAdminLogin
+    ) {
+      throw new ConflictException(
+        'Нельзя деактивировать дефолтного администратора',
+      );
+    }
 
     if (!user.isActive) {
       throw new ConflictException('Пользователь уже деактивирован');
