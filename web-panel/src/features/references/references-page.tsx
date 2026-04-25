@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
+import { Pagination } from '../../components/ui/Pagination';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { useToast } from '../../app/toast-provider';
 import { getApiErrorMessage } from '../../lib/api-error';
@@ -16,18 +17,40 @@ type ReferencesPageProps = {
 export function ReferencesPage({ module, title }: ReferencesPageProps) {
   const queryClient = useQueryClient();
   const { pushToast } = useToast();
+  const isPaginatedModule =
+    module === 'locations' || module === 'equipment-types';
+
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingName, setEditingName] = useState('');
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
 
-  const queryKey = useMemo(() => ['reference', module], [module]);
+  const queryKey = useMemo(
+    () => ['reference', module, isPaginatedModule ? page : 1, search],
+    [module, isPaginatedModule, page, search],
+  );
 
   const referencesQuery = useQuery({
     queryKey,
-    queryFn: () => referencesApi.getAll(module),
+    queryFn: () => {
+      if (isPaginatedModule) {
+        return referencesApi.getList(module as 'locations' | 'equipment-types', {
+          page,
+          limit: 20,
+          search: search || undefined,
+        });
+      }
+
+      return referencesApi.getAll(module);
+    },
   });
+
+  const items = Array.isArray(referencesQuery.data)
+    ? referencesQuery.data
+    : referencesQuery.data?.items;
 
   const createMutation = useMutation({
     mutationFn: (value: string) =>
@@ -130,10 +153,23 @@ export function ReferencesPage({ module, title }: ReferencesPageProps) {
         </Button>
       </div>
 
+      {isPaginatedModule ? (
+        <div className="mb-4">
+          <Input
+            value={search}
+            placeholder="Поиск по названию"
+            onChange={(event) => {
+              setPage(1);
+              setSearch(event.target.value);
+            }}
+          />
+        </div>
+      ) : null}
+
       {error ? <p className="mb-3 text-sm text-red-600">{error}</p> : null}
 
       <div className="divide-y divide-gray-200 rounded-md border border-gray-200">
-        {referencesQuery.data?.map((item) => (
+        {items?.map((item) => (
           <div
             key={item.id}
             className="flex items-center justify-between px-3 py-2"
@@ -184,10 +220,19 @@ export function ReferencesPage({ module, title }: ReferencesPageProps) {
           </div>
         ))}
 
-        {!referencesQuery.isLoading && !referencesQuery.data?.length ? (
+        {!referencesQuery.isLoading && !items?.length ? (
           <div className="px-3 py-3 text-sm text-gray-500">Список пуст</div>
         ) : null}
       </div>
+
+      {isPaginatedModule && referencesQuery.data && !Array.isArray(referencesQuery.data) ? (
+        <Pagination
+          page={referencesQuery.data.page}
+          limit={referencesQuery.data.limit}
+          total={referencesQuery.data.total}
+          onPageChange={setPage}
+        />
+      ) : null}
 
       <ConfirmDialog
         isOpen={pendingDeleteId !== null}

@@ -8,6 +8,7 @@ import { Repository } from 'typeorm';
 import { EquipmentType } from './entities/equipment-type.entity';
 import { CreateEquipmentTypeDto } from './dto/create-equipment-type.dto';
 import { UpdateEquipmentTypeDto } from './dto/update-equipment-type.dto';
+import { FindEquipmentTypesQueryDto } from './dto/find-equipment-types-query.dto';
 
 @Injectable()
 export class EquipmentTypesService {
@@ -16,8 +17,26 @@ export class EquipmentTypesService {
     private readonly typesRepo: Repository<EquipmentType>,
   ) {}
 
-  async findAll(): Promise<EquipmentType[]> {
-    return this.typesRepo.find({ order: { id: 'ASC' } });
+  async findAll(params: FindEquipmentTypesQueryDto) {
+    const page = params.page < 1 ? 1 : params.page;
+    const limit =
+      params.limit < 1 ? 20 : params.limit > 100 ? 100 : params.limit;
+    const offset = (page - 1) * limit;
+
+    const qb = this.typesRepo
+      .createQueryBuilder('type')
+      .orderBy('type.id', 'ASC')
+      .skip(offset)
+      .take(limit);
+
+    if (params.search && params.search.trim().length > 0) {
+      qb.andWhere('type.name ILIKE :search', {
+        search: `%${params.search.trim()}%`,
+      });
+    }
+
+    const [items, total] = await qb.getManyAndCount();
+    return { items, total, page, limit };
   }
 
   async findById(id: number): Promise<EquipmentType> {

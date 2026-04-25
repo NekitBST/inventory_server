@@ -5,6 +5,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiTags,
   ApiUnauthorizedResponse,
   ApiConflictResponse,
@@ -21,7 +22,9 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
+  ValidationPipe,
 } from '@nestjs/common';
 import { LocationsService } from './locations.service';
 import { CreateLocationDto } from './dto/create-location.dto';
@@ -30,6 +33,8 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../../common/constants/roles';
 import { Location } from './entities/location.entity';
+import { FindLocationsQueryDto } from './dto/find-locations-query.dto';
+import { LocationListResponseDto } from './dto/location-list-response.dto';
 
 @ApiTags('Locations')
 @ApiBearerAuth()
@@ -40,11 +45,23 @@ export class LocationsController {
   constructor(private readonly locationsService: LocationsService) {}
 
   @ApiOperation({ summary: 'Список локаций' })
-  @ApiOkResponse({ type: Location, isArray: true })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
+  @ApiQuery({ name: 'search', required: false, example: 'Кабинет' })
+  @ApiOkResponse({ type: LocationListResponseDto })
   @ApiUnauthorizedResponse({ description: 'Токен невалиден' })
   @Get()
-  findAll() {
-    return this.locationsService.findAll();
+  findAll(
+    @Query(
+      new ValidationPipe({
+        transform: true,
+        whitelist: true,
+        forbidNonWhitelisted: true,
+      }),
+    )
+    query: FindLocationsQueryDto,
+  ) {
+    return this.locationsService.findAll(query);
   }
 
   @ApiOperation({ summary: 'Локация по ID' })

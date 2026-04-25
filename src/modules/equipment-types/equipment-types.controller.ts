@@ -5,6 +5,7 @@ import {
   ApiOkResponse,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiTags,
   ApiUnauthorizedResponse,
   ApiNotFoundResponse,
@@ -21,7 +22,9 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
+  ValidationPipe,
 } from '@nestjs/common';
 import { EquipmentTypesService } from './equipment-types.service';
 import { CreateEquipmentTypeDto } from './dto/create-equipment-type.dto';
@@ -30,6 +33,8 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../../common/constants/roles';
 import { EquipmentType } from './entities/equipment-type.entity';
+import { FindEquipmentTypesQueryDto } from './dto/find-equipment-types-query.dto';
+import { EquipmentTypeListResponseDto } from './dto/equipment-type-list-response.dto';
 
 @ApiTags('Equipment Types')
 @ApiBearerAuth()
@@ -40,11 +45,23 @@ export class EquipmentTypesController {
   constructor(private readonly typesService: EquipmentTypesService) {}
 
   @ApiOperation({ summary: 'Список типов оборудования' })
-  @ApiOkResponse({ type: EquipmentType, isArray: true })
+  @ApiQuery({ name: 'page', required: false, example: 1 })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
+  @ApiQuery({ name: 'search', required: false, example: 'Ноутбук' })
+  @ApiOkResponse({ type: EquipmentTypeListResponseDto })
   @ApiUnauthorizedResponse({ description: 'Токен невалиден' })
   @Get()
-  findAll() {
-    return this.typesService.findAll();
+  findAll(
+    @Query(
+      new ValidationPipe({
+        transform: true,
+        whitelist: true,
+        forbidNonWhitelisted: true,
+      }),
+    )
+    query: FindEquipmentTypesQueryDto,
+  ) {
+    return this.typesService.findAll(query);
   }
 
   @ApiOperation({ summary: 'Тип оборудования по ID' })
