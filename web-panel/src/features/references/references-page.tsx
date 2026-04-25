@@ -28,29 +28,34 @@ export function ReferencesPage({ module, title }: ReferencesPageProps) {
   const [editingName, setEditingName] = useState('');
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
 
-  const queryKey = useMemo(
-    () => ['reference', module, isPaginatedModule ? page : 1, search],
-    [module, isPaginatedModule, page, search],
+  const paginatedQueryKey = useMemo(
+    () => ['reference', module, 'paged', page, search],
+    [module, page, search],
   );
 
-  const referencesQuery = useQuery({
-    queryKey,
-    queryFn: () => {
-      if (isPaginatedModule) {
-        return referencesApi.getList(module as 'locations' | 'equipment-types', {
-          page,
-          limit: 20,
-          search: search || undefined,
-        });
-      }
+  const flatQueryKey = useMemo(() => ['reference', module, 'flat'], [module]);
 
-      return referencesApi.getAll(module);
-    },
+  const paginatedQuery = useQuery({
+    queryKey: paginatedQueryKey,
+    queryFn: () =>
+      referencesApi.getList(module as 'locations' | 'equipment-types', {
+        page,
+        limit: 20,
+        search: search || undefined,
+      }),
+    enabled: isPaginatedModule,
   });
 
-  const items = Array.isArray(referencesQuery.data)
-    ? referencesQuery.data
-    : referencesQuery.data?.items;
+  const flatQuery = useQuery({
+    queryKey: flatQueryKey,
+    queryFn: () => referencesApi.getAll(module),
+    enabled: !isPaginatedModule,
+  });
+
+  const items = isPaginatedModule ? paginatedQuery.data?.items : flatQuery.data;
+  const isLoading = isPaginatedModule
+    ? paginatedQuery.isLoading
+    : flatQuery.isLoading;
 
   const createMutation = useMutation({
     mutationFn: (value: string) =>
@@ -59,7 +64,7 @@ export function ReferencesPage({ module, title }: ReferencesPageProps) {
       setName('');
       setError('');
       pushToast({ title: 'Запись добавлена', tone: 'success' });
-      await queryClient.invalidateQueries({ queryKey });
+      await queryClient.invalidateQueries({ queryKey: ['reference', module] });
     },
     onError: (error) => {
       const message = getApiErrorMessage(error);
@@ -77,7 +82,7 @@ export function ReferencesPage({ module, title }: ReferencesPageProps) {
     onSuccess: async () => {
       setPendingDeleteId(null);
       pushToast({ title: 'Запись удалена', tone: 'warning' });
-      await queryClient.invalidateQueries({ queryKey });
+      await queryClient.invalidateQueries({ queryKey: ['reference', module] });
     },
     onError: (error) => {
       const message = getApiErrorMessage(error);
@@ -97,7 +102,7 @@ export function ReferencesPage({ module, title }: ReferencesPageProps) {
       setEditingName('');
       setError('');
       pushToast({ title: 'Запись обновлена', tone: 'info' });
-      await queryClient.invalidateQueries({ queryKey });
+      await queryClient.invalidateQueries({ queryKey: ['reference', module] });
     },
     onError: (error) => {
       const message = getApiErrorMessage(error);
@@ -220,16 +225,16 @@ export function ReferencesPage({ module, title }: ReferencesPageProps) {
           </div>
         ))}
 
-        {!referencesQuery.isLoading && !items?.length ? (
+        {!isLoading && !items?.length ? (
           <div className="px-3 py-3 text-sm text-gray-500">Список пуст</div>
         ) : null}
       </div>
 
-      {isPaginatedModule && referencesQuery.data && !Array.isArray(referencesQuery.data) ? (
+      {isPaginatedModule && paginatedQuery.data ? (
         <Pagination
-          page={referencesQuery.data.page}
-          limit={referencesQuery.data.limit}
-          total={referencesQuery.data.total}
+          page={paginatedQuery.data.page}
+          limit={paginatedQuery.data.limit}
+          total={paginatedQuery.data.total}
           onPageChange={setPage}
         />
       ) : null}
