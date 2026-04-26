@@ -5,6 +5,7 @@ import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { authApi } from './api';
+import { useAuth } from './useAuth';
 import { useToast } from '../../app/toast-provider';
 import { getApiErrorMessage } from '../../lib/api-error';
 
@@ -26,6 +27,7 @@ const schema = z
 type ChangePasswordForm = z.infer<typeof schema>;
 
 export function ChangePasswordPage() {
+  const { logout } = useAuth();
   const { pushToast } = useToast();
 
   const {
@@ -49,7 +51,12 @@ export function ChangePasswordPage() {
         newPassword: values.newPassword,
       });
       reset();
-      pushToast({ title: 'Пароль успешно изменён', tone: 'success' });
+      pushToast({
+        title: 'Пароль успешно изменён',
+        description: 'Войдите в систему снова с новым паролем',
+        tone: 'success',
+      });
+      await logout();
     } catch (error) {
       const message = getApiErrorMessage(error);
       pushToast({
