@@ -17,14 +17,14 @@ export class FindEquipmentQueryDto {
   @ApiPropertyOptional({
     example: 20,
     minimum: 1,
-    maximum: 100,
+    maximum: 500,
     description: 'Размер страницы',
   })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  @Max(100)
+  @Max(500)
   limit: number = 20;
 
   @ApiPropertyOptional({ example: 1, description: 'Фильтр по ID статуса' })

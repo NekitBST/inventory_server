@@ -52,7 +52,7 @@ export class InventoriesService {
   async findAll(params: FindInventoriesQueryDto) {
     const page = params.page < 1 ? 1 : params.page;
     const limit =
-      params.limit < 1 ? 20 : params.limit > 100 ? 100 : params.limit;
+      params.limit < 1 ? 20 : params.limit > 500 ? 500 : params.limit;
     const offset = (page - 1) * limit;
     const sortOrder = params.sortOrder === 'ASC' ? 'ASC' : 'DESC';
 

@@ -26,7 +26,7 @@ export const referencesApi = {
     if (isPaginatedModule(module)) {
       const paged = await this.getList(module, {
         page: 1,
-        limit: 100,
+        limit: 500,
       });
       return paged.items;
     }
