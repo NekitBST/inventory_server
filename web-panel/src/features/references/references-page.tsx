@@ -2,11 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
+import { Select } from '../../components/ui/Select';
 import { Button } from '../../components/ui/Button';
 import { Pagination } from '../../components/ui/Pagination';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { useToast } from '../../app/toast-provider';
 import { getApiErrorMessage } from '../../lib/api-error';
+import { readPageLimit, savePageLimit } from '../../lib/page-limit-storage';
 import { referencesApi, type ReferenceModule } from './api';
 
 type ReferencesPageProps = {
@@ -19,8 +21,10 @@ export function ReferencesPage({ module, title }: ReferencesPageProps) {
   const { pushToast } = useToast();
   const isPaginatedModule =
     module === 'locations' || module === 'equipment-types';
+  const limitStorageKey = `references.${module}.limit`;
 
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(() => readPageLimit(limitStorageKey, 20));
   const [search, setSearch] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState('');
@@ -30,16 +34,22 @@ export function ReferencesPage({ module, title }: ReferencesPageProps) {
 
   useEffect(() => {
     setPage(1);
+    setLimit(isPaginatedModule ? readPageLimit(limitStorageKey, 20) : 20);
     setSearch('');
     setEditingId(null);
     setEditingName('');
     setPendingDeleteId(null);
     setError('');
-  }, [module]);
+  }, [isPaginatedModule, limitStorageKey, module]);
+
+  useEffect(() => {
+    if (!isPaginatedModule) return;
+    savePageLimit(limitStorageKey, limit);
+  }, [isPaginatedModule, limit, limitStorageKey]);
 
   const paginatedQueryKey = useMemo(
-    () => ['reference', module, 'paged', page, search],
-    [module, page, search],
+    () => ['reference', module, 'paged', page, limit, search],
+    [module, page, limit, search],
   );
 
   const flatQueryKey = useMemo(() => ['reference', module, 'flat'], [module]);
@@ -49,7 +59,7 @@ export function ReferencesPage({ module, title }: ReferencesPageProps) {
     queryFn: () =>
       referencesApi.getList(module as 'locations' | 'equipment-types', {
         page,
-        limit: 20,
+        limit,
         search: search || undefined,
       }),
     enabled: isPaginatedModule,
@@ -168,7 +178,7 @@ export function ReferencesPage({ module, title }: ReferencesPageProps) {
       </div>
 
       {isPaginatedModule ? (
-        <div className="mb-4">
+        <div className="mb-4 grid gap-2 md:grid-cols-2">
           <Input
             value={search}
             placeholder="Поиск по названию"
@@ -177,6 +187,19 @@ export function ReferencesPage({ module, title }: ReferencesPageProps) {
               setSearch(event.target.value);
             }}
           />
+          <Select
+            className="w-full md:w-[200px] md:justify-self-end"
+            value={String(limit)}
+            onChange={(event) => {
+              setPage(1);
+              setLimit(Number(event.target.value));
+            }}
+          >
+            <option value="10">10 на страницу</option>
+            <option value="20">20 на страницу</option>
+            <option value="50">50 на страницу</option>
+            <option value="100">100 на страницу</option>
+          </Select>
         </div>
       ) : null}
 

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
@@ -10,6 +10,7 @@ import { useToast } from '../../app/toast-provider';
 import { equipmentApi } from './api';
 import { referencesApi } from '../references/api';
 import { getApiErrorMessage } from '../../lib/api-error';
+import { readPageLimit, savePageLimit } from '../../lib/page-limit-storage';
 import type { Equipment, EquipmentPayload } from '../../types/entities';
 
 type EquipmentFormState = {
@@ -35,6 +36,9 @@ export function EquipmentPage() {
   const { pushToast } = useToast();
 
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(() =>
+    readPageLimit('equipment.list.limit', 20),
+  );
   const [search, setSearch] = useState('');
   const [statusId, setStatusId] = useState<number | undefined>();
   const [typeId, setTypeId] = useState<number | undefined>();
@@ -49,13 +53,13 @@ export function EquipmentPage() {
   const filters = useMemo(
     () => ({
       page,
-      limit: 20,
+      limit,
       search: search || undefined,
       statusId,
       typeId,
       locationId,
     }),
-    [page, search, statusId, typeId, locationId],
+    [page, limit, search, statusId, typeId, locationId],
   );
 
   const equipmentQuery = useQuery({
@@ -136,6 +140,10 @@ export function EquipmentPage() {
   });
 
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
+
+  useEffect(() => {
+    savePageLimit('equipment.list.limit', limit);
+  }, [limit]);
 
   const handleStartEdit = (item: Equipment) => {
     setEditingEquipmentId(item.id);
@@ -294,7 +302,7 @@ export function EquipmentPage() {
         </div>
       </section>
 
-      <div className="mb-4 grid gap-2 md:grid-cols-4">
+      <div className="mb-4 grid gap-2 md:grid-cols-5">
         <Input
           placeholder="Поиск по названию/номеру"
           value={search}
@@ -353,6 +361,19 @@ export function EquipmentPage() {
               {location.name}
             </option>
           ))}
+        </Select>
+
+        <Select
+          value={String(limit)}
+          onChange={(event) => {
+            setPage(1);
+            setLimit(Number(event.target.value));
+          }}
+        >
+          <option value="10">10 на страницу</option>
+          <option value="20">20 на страницу</option>
+          <option value="50">50 на страницу</option>
+          <option value="100">100 на страницу</option>
         </Select>
       </div>
 

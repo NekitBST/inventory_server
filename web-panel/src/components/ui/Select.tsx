@@ -6,9 +6,17 @@ import {
   useRef,
   useState,
   type ChangeEvent,
+  type ReactElement,
+  type ReactNode,
   type SelectHTMLAttributes,
 } from 'react';
 import clsx from 'clsx';
+
+type SelectOptionProps = {
+  value?: unknown;
+  children?: ReactNode;
+  disabled?: boolean;
+};
 
 export function Select({
   className,
@@ -24,7 +32,9 @@ export function Select({
 
   const options = useMemo(() => {
     return Children.toArray(children)
-      .filter(isValidElement)
+      .filter((child): child is ReactElement<SelectOptionProps> =>
+        isValidElement<SelectOptionProps>(child),
+      )
       .map((child) => {
         const valueProp = child.props.value;
         return {

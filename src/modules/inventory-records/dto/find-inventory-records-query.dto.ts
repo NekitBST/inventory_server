@@ -10,12 +10,12 @@ export class FindInventoryRecordsQueryDto {
   @Min(1)
   page: number = 1;
 
-  @ApiPropertyOptional({ example: 30 })
+  @ApiPropertyOptional({ example: 20 })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  limit: number = 30;
+  limit: number = 20;
 
   @ApiPropertyOptional({ enum: ['FOUND', 'DAMAGED'] })
   @IsOptional()

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
@@ -10,11 +10,15 @@ import { useToast } from '../../app/toast-provider';
 import { getApiErrorMessage } from '../../lib/api-error';
 import { inventoriesApi } from './api';
 import { Badge } from '../../components/ui/Badge';
+import { readPageLimit, savePageLimit } from '../../lib/page-limit-storage';
 
 export function InventoriesPage() {
   const queryClient = useQueryClient();
   const { pushToast } = useToast();
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(() =>
+    readPageLimit('inventories.list.limit', 20),
+  );
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<'OPEN' | 'CLOSED' | ''>('');
   const [sortOrder, setSortOrder] = useState<'ASC' | 'DESC'>('DESC');
@@ -22,7 +26,9 @@ export function InventoriesPage() {
     null,
   );
   const [recordsPage, setRecordsPage] = useState(1);
-  const [recordsLimit, setRecordsLimit] = useState(30);
+  const [recordsLimit, setRecordsLimit] = useState(() =>
+    readPageLimit('inventories.records.limit', 20),
+  );
   const [recordsSearch, setRecordsSearch] = useState('');
   const [recordsResultStatus, setRecordsResultStatus] = useState<
     'FOUND' | 'DAMAGED' | ''
@@ -32,12 +38,12 @@ export function InventoriesPage() {
   const filters = useMemo(
     () => ({
       page,
-      limit: 20,
+      limit,
       search: search || undefined,
       status: status || undefined,
       sortOrder,
     }),
-    [page, search, status, sortOrder],
+    [page, limit, search, status, sortOrder],
   );
 
   const inventoriesQuery = useQuery({
@@ -84,10 +90,18 @@ export function InventoriesPage() {
   const handleOpenRecords = (inventoryId: string) => {
     setSelectedInventoryId(inventoryId);
     setRecordsPage(1);
-    setRecordsLimit(30);
+    setRecordsLimit(readPageLimit('inventories.records.limit', 20));
     setRecordsSearch('');
     setRecordsResultStatus('');
   };
+
+  useEffect(() => {
+    savePageLimit('inventories.list.limit', limit);
+  }, [limit]);
+
+  useEffect(() => {
+    savePageLimit('inventories.records.limit', recordsLimit);
+  }, [recordsLimit]);
 
   return (
     <Card title="Инвентаризации">
@@ -124,7 +138,18 @@ export function InventoriesPage() {
           <option value="ASC">Дата начала: старые сверху</option>
         </Select>
 
-        <div className="h-10" />
+        <Select
+          value={String(limit)}
+          onChange={(event) => {
+            setPage(1);
+            setLimit(Number(event.target.value));
+          }}
+        >
+          <option value="10">10 на страницу</option>
+          <option value="20">20 на страницу</option>
+          <option value="50">50 на страницу</option>
+          <option value="100">100 на страницу</option>
+        </Select>
       </div>
 
       <div className="overflow-x-auto rounded-md border border-gray-200">
@@ -238,7 +263,7 @@ export function InventoriesPage() {
               }}
             >
               <option value="10">10 на страницу</option>
-              <option value="30">30 на страницу</option>
+              <option value="20">20 на страницу</option>
               <option value="50">50 на страницу</option>
               <option value="100">100 на страницу</option>
             </Select>
