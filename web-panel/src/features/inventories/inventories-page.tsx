@@ -12,6 +12,14 @@ import { inventoriesApi } from './api';
 import { Badge } from '../../components/ui/Badge';
 import { readPageLimit, savePageLimit } from '../../lib/page-limit-storage';
 
+function toInventoryStatusLabel(value: 'OPEN' | 'CLOSED'): string {
+  return value === 'OPEN' ? 'Открытая' : 'Закрытая';
+}
+
+function toResultStatusLabel(value: 'FOUND' | 'DAMAGED'): string {
+  return value === 'FOUND' ? 'Найдено' : 'Повреждено';
+}
+
 export function InventoriesPage() {
   const queryClient = useQueryClient();
   const { pushToast } = useToast();
@@ -123,8 +131,8 @@ export function InventoriesPage() {
           }}
         >
           <option value="">Любой статус</option>
-          <option value="OPEN">OPEN</option>
-          <option value="CLOSED">CLOSED</option>
+          <option value="OPEN">Открытая</option>
+          <option value="CLOSED">Закрытая</option>
         </Select>
 
         <Select
@@ -170,7 +178,7 @@ export function InventoriesPage() {
                   <Badge
                     tone={inventory.status === 'OPEN' ? 'warning' : 'success'}
                   >
-                    {inventory.status}
+                    {toInventoryStatusLabel(inventory.status)}
                   </Badge>
                 </td>
                 <td className="px-3 py-2">
@@ -251,8 +259,8 @@ export function InventoriesPage() {
               }}
             >
               <option value="">Любой результат</option>
-              <option value="FOUND">FOUND</option>
-              <option value="DAMAGED">DAMAGED</option>
+              <option value="FOUND">Найдено</option>
+              <option value="DAMAGED">Повреждено</option>
             </Select>
 
             <Select
@@ -298,7 +306,7 @@ export function InventoriesPage() {
                       record.resultStatus === 'DAMAGED' ? 'warning' : 'success'
                     }
                   >
-                    {record.resultStatus}
+                    {toResultStatusLabel(record.resultStatus)}
                   </Badge>
                 </div>
                 <p className="text-[13px] text-gray-500">

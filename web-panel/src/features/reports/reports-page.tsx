@@ -255,6 +255,28 @@ export function ReportsPage() {
     selectedRecordColumns.length,
   ]);
 
+  const rowsSelectedForExport = useMemo(() => {
+    if (reportType === 'equipment') {
+      return selectedEquipmentIds.length;
+    }
+    return inventoryRecordsPreviewQuery.data?.length ?? 0;
+  }, [
+    reportType,
+    selectedEquipmentIds.length,
+    inventoryRecordsPreviewQuery.data?.length,
+  ]);
+
+  const rowsInPreview = useMemo(() => {
+    if (reportType === 'equipment') {
+      return equipmentPreviewQuery.data?.length ?? 0;
+    }
+    return inventoryRecordsPreviewQuery.data?.length ?? 0;
+  }, [
+    reportType,
+    equipmentPreviewQuery.data?.length,
+    inventoryRecordsPreviewQuery.data?.length,
+  ]);
+
   const toggleEquipmentColumn = (column: EquipmentColumnKey) => {
     setSelectedEquipmentColumns((previous) =>
       previous.includes(column)
@@ -396,6 +418,11 @@ export function ReportsPage() {
         </Button>
       </div>
 
+      <div className="mt-3 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-700">
+        Предпросмотр: {rowsInPreview} строк • к экспорту выбрано:{' '}
+        {rowsSelectedForExport} строк
+      </div>
+
       {reportType === 'equipment' ? (
         <section className="mt-4 rounded-md border border-gray-200 p-3">
           <h3 className="mb-2 text-sm font-semibold text-gray-900">
@@ -470,9 +497,7 @@ export function ReportsPage() {
               <option value="">Выберите инвентаризацию</option>
               {closedInventories.map((inventory) => (
                 <option key={inventory.id} value={inventory.id}>
-                  {new Date(inventory.startedAt).toLocaleString()} •{' '}
-                  {toInventoryStatusLabel(inventory.status)} •{' '}
-                  {inventory.createdByUser?.fullName ?? '-'}
+                  {`${new Date(inventory.startedAt).toLocaleString()} • ${toInventoryStatusLabel(inventory.status)} • ${inventory.createdByUser?.fullName ?? '-'}`}
                 </option>
               ))}
             </Select>
@@ -553,7 +578,8 @@ export function ReportsPage() {
       {reportType === 'equipment' ? (
         <section className="mt-4 rounded-md border border-gray-200 p-3">
           <h3 className="mb-2 text-sm font-semibold text-gray-900">
-            Предпросмотр оборудования ({equipmentPreviewQuery.data?.length ?? 0})
+            Предпросмотр оборудования ({equipmentPreviewQuery.data?.length ?? 0}
+            )
           </h3>
           <div className="overflow-x-auto rounded-md border border-gray-200">
             <table className="w-full min-w-[980px] divide-y divide-gray-200 text-sm">
@@ -570,8 +596,9 @@ export function ReportsPage() {
                       onChange={(event) => {
                         if (event.target.checked) {
                           setSelectedEquipmentIds(
-                            equipmentPreviewQuery.data?.map((item) => item.id) ??
-                              [],
+                            equipmentPreviewQuery.data?.map(
+                              (item) => item.id,
+                            ) ?? [],
                           );
                         } else {
                           setSelectedEquipmentIds([]);
@@ -658,7 +685,9 @@ export function ReportsPage() {
                     <td className="px-3 py-2">
                       {record.equipment?.inventoryNumber ?? '-'}
                     </td>
-                    <td className="px-3 py-2">{record.equipment?.name ?? '-'}</td>
+                    <td className="px-3 py-2">
+                      {record.equipment?.name ?? '-'}
+                    </td>
                     <td className="px-3 py-2">
                       {record.equipment?.serialNumber ?? '-'}
                     </td>
@@ -675,7 +704,9 @@ export function ReportsPage() {
                       {toResultStatusLabel(record.resultStatus)}
                     </td>
                     <td className="px-3 py-2">{record.comment ?? '-'}</td>
-                    <td className="px-3 py-2">{toDateTime(record.scannedAt)}</td>
+                    <td className="px-3 py-2">
+                      {toDateTime(record.scannedAt)}
+                    </td>
                   </tr>
                 ))}
                 {!inventoryRecordsPreviewQuery.isLoading &&
