@@ -7,7 +7,10 @@ import { Select } from '../../components/ui/Select';
 import { Button } from '../../components/ui/Button';
 import { useToast } from '../../app/toast-provider';
 import { getApiErrorMessage } from '../../lib/api-error';
-import { exportReportFile } from '../../lib/report-export';
+import {
+  exportReportFile,
+  type ExportStatisticsSheet,
+} from '../../lib/report-export';
 import { useAuth } from '../auth/useAuth';
 import { equipmentApi } from '../equipment/api';
 import { inventoriesApi } from '../inventories/api';
@@ -66,6 +69,7 @@ type InventoryRecordsReportRow = {
 type EquipmentReportSnapshot = {
   reportType: 'equipment';
   format: ExportFormat;
+  includeStatistics: boolean;
   search: string;
   statusId?: number;
   typeId?: number;
@@ -77,6 +81,7 @@ type EquipmentReportSnapshot = {
 type InventoryRecordsReportSnapshot = {
   reportType: 'inventory-records';
   format: ExportFormat;
+  includeStatistics: boolean;
   selectedInventoryId: string;
   recordsResultStatus: 'FOUND' | 'DAMAGED' | '';
   recordsSearch: string;
@@ -84,6 +89,8 @@ type InventoryRecordsReportSnapshot = {
 };
 
 type ReportSnapshot = EquipmentReportSnapshot | InventoryRecordsReportSnapshot;
+
+const REPORTS_STATE_STORAGE_KEY = 'reports.page.state.v1';
 
 const equipmentColumns: Array<{ key: EquipmentColumnKey; label: string }> = [
   { key: 'inventoryNumber', label: 'Инвентарный номер' },
@@ -108,6 +115,100 @@ const inventoryRecordColumns: Array<{
   { key: 'comment', label: 'Комментарий' },
   { key: 'scannedAt', label: 'Сканировано' },
 ];
+
+type PersistedReportsState = {
+  reportType: ReportType;
+  format: ExportFormat;
+  includeStatistics: boolean;
+  search: string;
+  statusId: number | null;
+  typeId: number | null;
+  locationId: number | null;
+  selectedInventoryId: string;
+  recordsResultStatus: 'FOUND' | 'DAMAGED' | '';
+  recordsSearch: string;
+  selectedEquipmentColumns: EquipmentColumnKey[];
+  selectedRecordColumns: InventoryRecordColumnKey[];
+};
+
+const equipmentColumnKeys = new Set<EquipmentColumnKey>(
+  equipmentColumns.map((column) => column.key),
+);
+
+const inventoryRecordColumnKeys = new Set<InventoryRecordColumnKey>(
+  inventoryRecordColumns.map((column) => column.key),
+);
+
+function readReportsState(): PersistedReportsState {
+  const fallback: PersistedReportsState = {
+    reportType: 'equipment',
+    format: 'xlsx',
+    includeStatistics: false,
+    search: '',
+    statusId: null,
+    typeId: null,
+    locationId: null,
+    selectedInventoryId: '',
+    recordsResultStatus: '',
+    recordsSearch: '',
+    selectedEquipmentColumns: equipmentColumns.map((column) => column.key),
+    selectedRecordColumns: inventoryRecordColumns.map((column) => column.key),
+  };
+
+  if (typeof window === 'undefined') return fallback;
+
+  try {
+    const raw = window.localStorage.getItem(REPORTS_STATE_STORAGE_KEY);
+    if (!raw) return fallback;
+    const parsed = JSON.parse(raw) as Partial<PersistedReportsState>;
+
+    return {
+      reportType:
+        parsed.reportType === 'inventory-records'
+          ? 'inventory-records'
+          : 'equipment',
+      format: parsed.format === 'csv' ? 'csv' : 'xlsx',
+      includeStatistics: Boolean(parsed.includeStatistics),
+      search: typeof parsed.search === 'string' ? parsed.search : '',
+      statusId: typeof parsed.statusId === 'number' ? parsed.statusId : null,
+      typeId: typeof parsed.typeId === 'number' ? parsed.typeId : null,
+      locationId:
+        typeof parsed.locationId === 'number' ? parsed.locationId : null,
+      selectedInventoryId:
+        typeof parsed.selectedInventoryId === 'string'
+          ? parsed.selectedInventoryId
+          : '',
+      recordsResultStatus:
+        parsed.recordsResultStatus === 'FOUND' ||
+        parsed.recordsResultStatus === 'DAMAGED'
+          ? parsed.recordsResultStatus
+          : '',
+      recordsSearch:
+        typeof parsed.recordsSearch === 'string' ? parsed.recordsSearch : '',
+      selectedEquipmentColumns: Array.isArray(parsed.selectedEquipmentColumns)
+        ? parsed.selectedEquipmentColumns.filter(
+            (key): key is EquipmentColumnKey =>
+              typeof key === 'string' &&
+              equipmentColumnKeys.has(key as EquipmentColumnKey),
+          )
+        : fallback.selectedEquipmentColumns,
+      selectedRecordColumns: Array.isArray(parsed.selectedRecordColumns)
+        ? parsed.selectedRecordColumns.filter(
+            (key): key is InventoryRecordColumnKey =>
+              typeof key === 'string' &&
+              inventoryRecordColumnKeys.has(key as InventoryRecordColumnKey),
+          )
+        : fallback.selectedRecordColumns,
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+function saveReportsState(state: PersistedReportsState): void {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(REPORTS_STATE_STORAGE_KEY, JSON.stringify(state));
+}
 
 function toDateTime(value: string): string {
   return new Date(value).toLocaleString();
@@ -152,6 +253,158 @@ function toHistoryMetaLabel(item: ReportHistoryItem): string {
       : '--------';
 
   return `Id: ${shortId} • ${createdAt} • ${format}`;
+}
+
+function uniqueInOrder(values: string[]): string[] {
+  const seen = new Set<string>();
+  return values.filter((value) => {
+    if (seen.has(value)) return false;
+    seen.add(value);
+    return true;
+  });
+}
+
+function buildEquipmentStatistics(
+  rows: EquipmentReportRow[],
+): ExportStatisticsSheet | undefined {
+  if (!rows.length) return undefined;
+
+  const statuses = uniqueInOrder(
+    rows.map((row) => row.statusName.trim()).filter(Boolean),
+  );
+  const locations = uniqueInOrder(
+    rows.map((row) => row.locationName.trim()).filter(Boolean),
+  );
+
+  const tables: ExportStatisticsSheet['tables'] = [];
+
+  if (locations.length > 0 && statuses.length > 0) {
+    const locationRows = locations.map((location) => [
+      location,
+      ...statuses.map(
+        (status) =>
+          rows.filter(
+            (row) =>
+              row.locationName.trim() === location &&
+              row.statusName.trim() === status,
+          ).length,
+      ),
+    ]);
+
+    const totalRow: Array<string | number | null> = [
+      'Всего',
+      ...statuses.map((_, statusIndex) =>
+        locationRows.reduce((sum, row) => {
+          const value = row[statusIndex + 1];
+          return sum + (typeof value === 'number' ? value : 0);
+        }, 0),
+      ),
+    ];
+
+    tables.push({
+      title: 'По локациям',
+      columns: ['Локация', ...statuses],
+      rows: locations.length > 1 ? [...locationRows, totalRow] : locationRows,
+    });
+  }
+
+  const rowsWithoutLocation = rows.filter((row) => !row.locationName.trim());
+  if (rowsWithoutLocation.length > 0 && statuses.length > 0) {
+    tables.push({
+      title: 'Оборудование без указанной локации',
+      columns: statuses,
+      rows: [
+        statuses.map(
+          (status) =>
+            rowsWithoutLocation.filter(
+              (row) => row.statusName.trim() === status,
+            ).length,
+        ),
+      ],
+    });
+  }
+
+  return tables.length ? { sheetName: 'Статистика', tables } : undefined;
+}
+
+function buildInventoryStatistics(
+  rows: InventoryRecordsReportRow[],
+): ExportStatisticsSheet | undefined {
+  if (!rows.length) return undefined;
+
+  const resultStatuses = uniqueInOrder(
+    rows.map((row) => row.resultStatus.trim()).filter(Boolean),
+  );
+  const equipmentStatuses = uniqueInOrder(
+    rows.map((row) => row.equipmentStatus.trim()).filter(Boolean),
+  );
+  const locations = uniqueInOrder(
+    rows.map((row) => row.locationName.trim()).filter(Boolean),
+  );
+
+  const tables: ExportStatisticsSheet['tables'] = [];
+
+  if (resultStatuses.length > 0) {
+    tables.push({
+      title: 'Результаты сканирования',
+      columns: resultStatuses,
+      rows: [
+        resultStatuses.map(
+          (resultStatus) =>
+            rows.filter((row) => row.resultStatus.trim() === resultStatus)
+              .length,
+        ),
+      ],
+    });
+  }
+
+  if (locations.length > 0 && equipmentStatuses.length > 0) {
+    const locationRows = locations.map((location) => [
+      location,
+      ...equipmentStatuses.map(
+        (status) =>
+          rows.filter(
+            (row) =>
+              row.locationName.trim() === location &&
+              row.equipmentStatus.trim() === status,
+          ).length,
+      ),
+    ]);
+
+    const totalRow: Array<string | number | null> = [
+      'Всего',
+      ...equipmentStatuses.map((_, statusIndex) =>
+        locationRows.reduce((sum, row) => {
+          const value = row[statusIndex + 1];
+          return sum + (typeof value === 'number' ? value : 0);
+        }, 0),
+      ),
+    ];
+
+    tables.push({
+      title: 'По локациям',
+      columns: ['Локация', ...equipmentStatuses],
+      rows: locations.length > 1 ? [...locationRows, totalRow] : locationRows,
+    });
+  }
+
+  const rowsWithoutLocation = rows.filter((row) => !row.locationName.trim());
+  if (rowsWithoutLocation.length > 0 && equipmentStatuses.length > 0) {
+    tables.push({
+      title: 'Оборудование без указанной локации',
+      columns: equipmentStatuses,
+      rows: [
+        equipmentStatuses.map(
+          (status) =>
+            rowsWithoutLocation.filter(
+              (row) => row.equipmentStatus.trim() === status,
+            ).length,
+        ),
+      ],
+    });
+  }
+
+  return tables.length ? { sheetName: 'Статистика', tables } : undefined;
 }
 
 function toNumber(value: unknown): number | undefined {
@@ -324,38 +577,64 @@ async function fetchAllInventoryRecords(params: {
 }
 
 export function ReportsPage() {
+  const initialReportsState = useMemo(() => readReportsState(), []);
   const { user } = useAuth();
   const { pushToast } = useToast();
   const queryClient = useQueryClient();
-  const [reportType, setReportType] = useState<ReportType>('equipment');
-  const [format, setFormat] = useState<ExportFormat>('xlsx');
+  const [reportType, setReportType] = useState<ReportType>(
+    initialReportsState.reportType,
+  );
+  const [format, setFormat] = useState<ExportFormat>(
+    initialReportsState.format,
+  );
+  const [includeStatistics, setIncludeStatistics] = useState(
+    initialReportsState.includeStatistics,
+  );
   const [isExporting, setIsExporting] = useState(false);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
-  const [search, setSearch] = useState('');
-  const [statusId, setStatusId] = useState<number | undefined>();
-  const [typeId, setTypeId] = useState<number | undefined>();
-  const [locationId, setLocationId] = useState<number | undefined>();
+  const [search, setSearch] = useState(initialReportsState.search);
+  const [statusId, setStatusId] = useState<number | undefined>(
+    initialReportsState.statusId ?? undefined,
+  );
+  const [typeId, setTypeId] = useState<number | undefined>(
+    initialReportsState.typeId ?? undefined,
+  );
+  const [locationId, setLocationId] = useState<number | undefined>(
+    initialReportsState.locationId ?? undefined,
+  );
   const [equipmentSelectionMode, setEquipmentSelectionMode] = useState<
     'auto' | 'manual'
   >('auto');
 
-  const [selectedInventoryId, setSelectedInventoryId] = useState('');
+  const [selectedInventoryId, setSelectedInventoryId] = useState(
+    initialReportsState.selectedInventoryId,
+  );
   const [recordsResultStatus, setRecordsResultStatus] = useState<
     'FOUND' | 'DAMAGED' | ''
-  >('');
-  const [recordsSearch, setRecordsSearch] = useState('');
+  >(initialReportsState.recordsResultStatus);
+  const [recordsSearch, setRecordsSearch] = useState(
+    initialReportsState.recordsSearch,
+  );
   const [selectedEquipmentIds, setSelectedEquipmentIds] = useState<string[]>(
     [],
   );
 
   const [selectedEquipmentColumns, setSelectedEquipmentColumns] = useState<
     EquipmentColumnKey[]
-  >(equipmentColumns.map((column) => column.key));
+  >(
+    initialReportsState.selectedEquipmentColumns.length
+      ? initialReportsState.selectedEquipmentColumns
+      : equipmentColumns.map((column) => column.key),
+  );
 
   const [selectedRecordColumns, setSelectedRecordColumns] = useState<
     InventoryRecordColumnKey[]
-  >(inventoryRecordColumns.map((column) => column.key));
+  >(
+    initialReportsState.selectedRecordColumns.length
+      ? initialReportsState.selectedRecordColumns
+      : inventoryRecordColumns.map((column) => column.key),
+  );
 
   const statusesQuery = useQuery({
     queryKey: ['reference', 'equipment-statuses'],
@@ -443,6 +722,36 @@ export function ReportsPage() {
     setEquipmentSelectionMode('auto');
   }, [reportType]);
 
+  useEffect(() => {
+    saveReportsState({
+      reportType,
+      format,
+      includeStatistics,
+      search,
+      statusId: statusId ?? null,
+      typeId: typeId ?? null,
+      locationId: locationId ?? null,
+      selectedInventoryId,
+      recordsResultStatus,
+      recordsSearch,
+      selectedEquipmentColumns,
+      selectedRecordColumns,
+    });
+  }, [
+    reportType,
+    format,
+    includeStatistics,
+    search,
+    statusId,
+    typeId,
+    locationId,
+    selectedInventoryId,
+    recordsResultStatus,
+    recordsSearch,
+    selectedEquipmentColumns,
+    selectedRecordColumns,
+  ]);
+
   const selectedColumnsCount = useMemo(() => {
     return reportType === 'equipment'
       ? selectedEquipmentColumns.length
@@ -521,6 +830,7 @@ export function ReportsPage() {
           : equipmentColumns.map((column) => column.key),
       );
       setSelectedEquipmentIds(toStringArray(snapshot.selectedEquipmentIds));
+      setIncludeStatistics(Boolean(snapshot.includeStatistics));
       setEquipmentSelectionMode('manual');
     } else if (isInventorySnapshot(snapshot)) {
       const selectedRecordColumns = toStringArray(
@@ -534,6 +844,7 @@ export function ReportsPage() {
           ? selectedRecordColumns
           : inventoryRecordColumns.map((column) => column.key),
       );
+      setIncludeStatistics(Boolean(snapshot.includeStatistics));
     }
 
     setIsHistoryOpen(false);
@@ -596,17 +907,23 @@ export function ReportsPage() {
           locationName: item.location?.name ?? '',
         }));
 
+        const statistics = includeStatistics
+          ? buildEquipmentStatistics(rows)
+          : undefined;
+
         await exportReportFile<EquipmentReportRow>({
           rows,
           columns: equipmentColumns,
           selectedColumnKeys: selectedEquipmentColumns,
           format,
           baseFileName: 'equipment_report',
+          statistics,
         });
 
         const snapshot: EquipmentReportSnapshot = {
           reportType: 'equipment',
           format,
+          includeStatistics,
           search,
           statusId,
           typeId,
@@ -650,17 +967,23 @@ export function ReportsPage() {
         scannedAt: toDateTime(record.scannedAt),
       }));
 
+      const statistics = includeStatistics
+        ? buildInventoryStatistics(rows)
+        : undefined;
+
       await exportReportFile<InventoryRecordsReportRow>({
         rows,
         columns: inventoryRecordColumns,
         selectedColumnKeys: selectedRecordColumns,
         format,
         baseFileName: `inventory_${selectedInventoryId.slice(0, 8)}_report`,
+        statistics,
       });
 
       const snapshot: InventoryRecordsReportSnapshot = {
         reportType: 'inventory-records',
         format,
+        includeStatistics,
         selectedInventoryId,
         recordsResultStatus,
         recordsSearch,
@@ -699,7 +1022,7 @@ export function ReportsPage() {
 
   return (
     <Card title="Отчеты">
-      <div className="grid gap-3 md:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-5">
         <Select
           value={reportType}
           onChange={(event) => {
@@ -722,11 +1045,28 @@ export function ReportsPage() {
           <option value="csv">CSV</option>
         </Select>
 
-        <Button onClick={() => void handleExport()} disabled={isExporting}>
+        <label className="flex h-10 items-center gap-2 rounded-xl border border-slate-300 bg-slate-50 px-3 text-sm text-slate-800">
+          <input
+            type="checkbox"
+            checked={includeStatistics}
+            onChange={(event) => setIncludeStatistics(event.target.checked)}
+          />
+          <span>Подсчёт статистики</span>
+        </label>
+
+        <Button
+          className="w-full"
+          onClick={() => void handleExport()}
+          disabled={isExporting}
+        >
           {isExporting ? 'Формируем отчет...' : 'Скачать отчет'}
         </Button>
 
-        <Button variant="secondary" onClick={() => setIsHistoryOpen(true)}>
+        <Button
+          variant="secondary"
+          className="w-full"
+          onClick={() => setIsHistoryOpen(true)}
+        >
           История отчетов
         </Button>
       </div>
