@@ -68,6 +68,8 @@ export type InventoryRecord = {
     id: string;
     inventoryNumber: string;
     name: string;
+    serialNumber?: string | null;
+    status?: OptionItem | null;
     type?: OptionItem | null;
     location?: OptionItem | null;
   } | null;

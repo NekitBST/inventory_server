@@ -17,6 +17,7 @@ const navItems: NavItem[] = [
   { to: '/change-password', label: 'Смена пароля', roles: ['ADMIN', 'USER'] },
   { to: '/equipment', label: 'Оборудование', roles: ['ADMIN', 'USER'] },
   { to: '/inventories', label: 'Инвентаризации', roles: ['ADMIN', 'USER'] },
+  { to: '/reports', label: 'Отчеты', roles: ['ADMIN', 'USER'] },
   { to: '/locations', label: 'Локации', roles: ['ADMIN', 'USER'] },
   {
     to: '/equipment-statuses',

@@ -62,7 +62,7 @@ export class InventoryRecordsController {
     description: 'UUID инвентаризации',
   })
   @ApiQuery({ name: 'page', required: false, example: 1 })
-  @ApiQuery({ name: 'limit', required: false, example: 30 })
+  @ApiQuery({ name: 'limit', required: false, example: 20 })
   @ApiQuery({
     name: 'resultStatus',
     required: false,

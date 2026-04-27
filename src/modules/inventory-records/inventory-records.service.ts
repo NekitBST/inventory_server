@@ -80,6 +80,7 @@ export class InventoryRecordsService {
     const qb = this.recordsRepo
       .createQueryBuilder('record')
       .leftJoinAndSelect('record.equipment', 'equipment')
+      .leftJoinAndSelect('equipment.status', 'equipmentStatus')
       .leftJoinAndSelect('equipment.type', 'equipmentType')
       .leftJoinAndSelect('equipment.location', 'location')
       .where('record.inventoryId = :inventoryId', { inventoryId })
@@ -110,6 +111,13 @@ export class InventoryRecordsService {
             id: item.equipment.id,
             inventoryNumber: item.equipment.inventoryNumber,
             name: item.equipment.name,
+            serialNumber: item.equipment.serialNumber,
+            status: item.equipment.status
+              ? {
+                  id: item.equipment.status.id,
+                  name: item.equipment.status.name,
+                }
+              : null,
             type: item.equipment.type
               ? {
                   id: item.equipment.type.id,

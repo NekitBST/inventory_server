@@ -25,6 +25,20 @@ class InventoryRecordEquipmentDto {
   name: string;
 
   @ApiPropertyOptional({
+    example: 'SN-ABC-12345',
+    nullable: true,
+    description: 'Серийный номер оборудования',
+  })
+  serialNumber?: string | null;
+
+  @ApiPropertyOptional({
+    type: () => InventoryRecordDictionaryItemDto,
+    nullable: true,
+    description: 'Статус оборудования',
+  })
+  status?: InventoryRecordDictionaryItemDto | null;
+
+  @ApiPropertyOptional({
     type: () => InventoryRecordDictionaryItemDto,
     nullable: true,
   })

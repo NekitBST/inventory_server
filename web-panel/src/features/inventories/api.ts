@@ -17,6 +17,11 @@ export type InventoryRecordsQuery = {
   search?: string;
 };
 
+export type InventoryRecordsReportQuery = {
+  resultStatus?: 'FOUND' | 'DAMAGED';
+  search?: string;
+};
+
 export const inventoriesApi = {
   async getAll(params: InventoriesQuery) {
     const { data } = await apiClient.get<PaginatedResponse<Inventory>>(
@@ -41,5 +46,19 @@ export const inventoriesApi = {
       { params },
     );
     return data;
+  },
+
+  async exportRecordsReport(
+    inventoryId: string,
+    params: InventoryRecordsReportQuery,
+  ) {
+    const response = await apiClient.get<Blob>(
+      `/reports/inventories/${inventoryId}/export`,
+      {
+        params,
+        responseType: 'blob',
+      },
+    );
+    return response;
   },
 };

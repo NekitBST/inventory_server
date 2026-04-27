@@ -11,6 +11,13 @@ export type EquipmentQuery = {
   locationId?: number;
 };
 
+export type EquipmentReportQuery = {
+  search?: string;
+  statusId?: number;
+  typeId?: number;
+  locationId?: number;
+};
+
 export const equipmentApi = {
   async getAll(params: EquipmentQuery) {
     const { data } = await apiClient.get<PaginatedResponse<Equipment>>(
@@ -37,5 +44,13 @@ export const equipmentApi = {
 
   async remove(id: string) {
     await apiClient.delete(`/equipment/${id}`);
+  },
+
+  async exportReport(params: EquipmentReportQuery) {
+    const response = await apiClient.get<Blob>('/reports/equipment/export', {
+      params,
+      responseType: 'blob',
+    });
+    return response;
   },
 };

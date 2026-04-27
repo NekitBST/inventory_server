@@ -8,6 +8,7 @@ import { EquipmentPage } from '../features/equipment/equipment-page';
 import { UsersPage } from '../features/users/users-page';
 import { InventoriesPage } from '../features/inventories/inventories-page';
 import { ReferencesPage } from '../features/references/references-page';
+import { ReportsPage } from '../features/reports/reports-page';
 
 export const router = createBrowserRouter([
   {
@@ -24,6 +25,7 @@ export const router = createBrowserRouter([
           { path: '/change-password', element: <ChangePasswordPage /> },
           { path: '/equipment', element: <EquipmentPage /> },
           { path: '/inventories', element: <InventoriesPage /> },
+          { path: '/reports', element: <ReportsPage /> },
           {
             path: '/locations',
             element: <ReferencesPage module="locations" title="Локации" />,

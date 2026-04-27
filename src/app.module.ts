@@ -10,6 +10,7 @@ import { EquipmentTypesModule } from './modules/equipment-types/equipment-types.
 import { InventoryRecordsModule } from './modules/inventory-records/inventory-records.module';
 import { InventoriesModule } from './modules/inventories/inventories.module';
 import { LocationsModule } from './modules/locations/locations.module';
+import { ReportsModule } from './modules/reports/reports.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { LocationsModule } from './modules/locations/locations.module';
     InventoryRecordsModule,
     InventoriesModule,
     LocationsModule,
+    ReportsModule,
   ],
 })
 export class AppModule {}
