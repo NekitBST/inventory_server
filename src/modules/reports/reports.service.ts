@@ -1,11 +1,19 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository } from 'typeorm';
 import { Equipment } from '../equipment/entities/equipment.entity';
 import { Inventory } from '../inventories/entities/inventory.entity';
 import { InventoryRecord } from '../inventory-records/entities/inventory-record.entity';
+import { User } from '../users/entities/user.entity';
 import { ExportEquipmentReportQueryDto } from './dto/export-equipment-report-query.dto';
 import { ExportInventoryRecordsReportQueryDto } from './dto/export-inventory-records-report-query.dto';
+import { CreateReportHistoryDto } from './dto/create-report-history.dto';
+import { FindReportHistoryQueryDto } from './dto/find-report-history-query.dto';
+import { ReportHistory } from './entities/report-history.entity';
 
 @Injectable()
 export class ReportsService {
@@ -16,7 +24,55 @@ export class ReportsService {
     private readonly inventoriesRepo: Repository<Inventory>,
     @InjectRepository(InventoryRecord)
     private readonly recordsRepo: Repository<InventoryRecord>,
+    @InjectRepository(ReportHistory)
+    private readonly reportHistoryRepo: Repository<ReportHistory>,
   ) {}
+
+  async createReportHistory(user: User, dto: CreateReportHistoryDto) {
+    const history = this.reportHistoryRepo.create({
+      createdBy: user.id,
+      reportType: dto.reportType,
+      title: this.buildReportTitle(dto.reportType, dto.snapshot),
+      format: dto.format,
+      snapshot: dto.snapshot,
+      isPinned: dto.isPinned ?? false,
+    });
+
+    return this.reportHistoryRepo.save(history);
+  }
+
+  async findReportHistory(user: User, query: FindReportHistoryQueryDto) {
+    const qb = this.reportHistoryRepo
+      .createQueryBuilder('history')
+      .where('history.createdBy = :userId', { userId: user.id })
+      .orderBy('history.isPinned', 'DESC')
+      .addOrderBy('history.createdAt', 'DESC');
+
+    if (query.reportType) {
+      qb.andWhere('history.reportType = :reportType', {
+        reportType: query.reportType,
+      });
+    }
+
+    return qb.getMany();
+  }
+
+  async setReportHistoryPinned(
+    user: User,
+    historyId: string,
+    isPinned: boolean,
+  ) {
+    const history = await this.reportHistoryRepo.findOne({
+      where: { id: historyId, createdBy: user.id },
+    });
+
+    if (!history) {
+      throw new NotFoundException('История отчета не найдена');
+    }
+
+    history.isPinned = isPinned;
+    return this.reportHistoryRepo.save(history);
+  }
 
   async buildEquipmentCsv(
     query: ExportEquipmentReportQueryDto,
@@ -173,6 +229,17 @@ export class ReportsService {
 
   private toInventoryStatusLabel(value: 'OPEN' | 'CLOSED'): string {
     return value === 'OPEN' ? 'Открытая' : 'Закрытая';
+  }
+
+  private buildReportTitle(
+    reportType: 'equipment' | 'inventory-records',
+    _snapshot: Record<string, unknown>,
+  ): string {
+    if (reportType === 'equipment') {
+      return 'Оборудование';
+    }
+
+    return 'Инвентаризация';
   }
 
   private toCsv(rows: Array<Array<string | number | null>>): string {

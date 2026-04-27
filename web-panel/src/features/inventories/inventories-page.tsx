@@ -20,6 +20,10 @@ function toResultStatusLabel(value: 'FOUND' | 'DAMAGED'): string {
   return value === 'FOUND' ? 'Найдено' : 'Повреждено';
 }
 
+function toShortId(value: string): string {
+  return value.slice(0, 8);
+}
+
 export function InventoriesPage() {
   const queryClient = useQueryClient();
   const { pushToast } = useToast();
@@ -161,10 +165,11 @@ export function InventoriesPage() {
       </div>
 
       <div className="overflow-x-auto rounded-md border border-gray-200">
-        <table className="w-full min-w-[860px] divide-y divide-gray-200 text-sm">
+        <table className="w-full min-w-[980px] divide-y divide-gray-200 text-sm">
           <thead className="bg-gray-50 text-left text-gray-600">
             <tr>
               <th className="px-3 py-2">Статус</th>
+              <th className="px-3 py-2">Id</th>
               <th className="px-3 py-2">Начало</th>
               <th className="px-3 py-2">Окончание</th>
               <th className="px-3 py-2">Сотрудник</th>
@@ -181,6 +186,7 @@ export function InventoriesPage() {
                     {toInventoryStatusLabel(inventory.status)}
                   </Badge>
                 </td>
+                <td className="px-3 py-2">{toShortId(inventory.id)}</td>
                 <td className="px-3 py-2">
                   {new Date(inventory.startedAt).toLocaleString()}
                 </td>

@@ -1,5 +1,8 @@
 import {
   Controller,
+  Patch,
+  Body,
+  Post,
   Get,
   Param,
   ParseUUIDPipe,
@@ -10,6 +13,8 @@ import {
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiBody,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -20,11 +25,16 @@ import {
 } from '@nestjs/swagger';
 import type { Response } from 'express';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../../common/constants/roles';
+import { User } from '../users/entities/user.entity';
 import { ReportsService } from './reports.service';
 import { ExportEquipmentReportQueryDto } from './dto/export-equipment-report-query.dto';
 import { ExportInventoryRecordsReportQueryDto } from './dto/export-inventory-records-report-query.dto';
+import { CreateReportHistoryDto } from './dto/create-report-history.dto';
+import { FindReportHistoryQueryDto } from './dto/find-report-history-query.dto';
+import { ReportHistoryResponseDto } from './dto/report-history-response.dto';
 
 @ApiTags('Reports')
 @ApiBearerAuth()
@@ -33,6 +43,66 @@ import { ExportInventoryRecordsReportQueryDto } from './dto/export-inventory-rec
 @Roles('ADMIN', 'USER')
 export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
+
+  @ApiOperation({ summary: 'История отчетов текущего пользователя' })
+  @ApiOkResponse({ type: ReportHistoryResponseDto, isArray: true })
+  @ApiUnauthorizedResponse({ description: 'Токен невалиден' })
+  @Get('history')
+  getHistory(
+    @CurrentUser() user: User,
+    @Query(
+      new ValidationPipe({
+        transform: true,
+        whitelist: true,
+        forbidNonWhitelisted: true,
+      }),
+    )
+    query: FindReportHistoryQueryDto,
+  ) {
+    return this.reportsService.findReportHistory(user, query);
+  }
+
+  @ApiOperation({ summary: 'Сохранить отчет в историю' })
+  @ApiBody({ type: CreateReportHistoryDto })
+  @ApiCreatedResponse({ type: ReportHistoryResponseDto })
+  @ApiUnauthorizedResponse({ description: 'Токен невалиден' })
+  @Post('history')
+  createHistory(
+    @CurrentUser() user: User,
+    @Body(
+      new ValidationPipe({
+        transform: true,
+        whitelist: true,
+        forbidNonWhitelisted: true,
+      }),
+    )
+    dto: CreateReportHistoryDto,
+  ) {
+    return this.reportsService.createReportHistory(user, dto);
+  }
+
+  @ApiOperation({ summary: 'Закрепить или открепить отчет в истории' })
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { isPinned: { type: 'boolean' } },
+      required: ['isPinned'],
+    },
+  })
+  @ApiOkResponse({ type: ReportHistoryResponseDto })
+  @ApiUnauthorizedResponse({ description: 'Токен невалиден' })
+  @Patch('history/:id/pin')
+  setPinned(
+    @CurrentUser() user: User,
+    @Param('id', ParseUUIDPipe) historyId: string,
+    @Body('isPinned') isPinned: boolean,
+  ) {
+    return this.reportsService.setReportHistoryPinned(
+      user,
+      historyId,
+      isPinned,
+    );
+  }
 
   @ApiOperation({ summary: 'Экспорт CSV отчета по оборудованию' })
   @ApiProduces('text/csv')

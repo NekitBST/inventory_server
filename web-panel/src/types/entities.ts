@@ -77,3 +77,15 @@ export type InventoryRecord = {
   comment: string | null;
   resultStatus: 'FOUND' | 'DAMAGED';
 };
+
+export type ReportHistoryItem = {
+  id: string;
+  createdBy: string;
+  reportType: 'equipment' | 'inventory-records';
+  title: string;
+  format: 'csv' | 'xlsx';
+  snapshot: Record<string, unknown>;
+  isPinned: boolean;
+  createdAt: string;
+  updatedAt: string;
+};

@@ -118,9 +118,33 @@ export class SchemaDb1772820697167 implements MigrationInterface {
     await queryRunner.query(
       `CREATE UNIQUE INDEX uq_inventory_equipment ON inventory_records(inventory_id, equipment_id)`,
     );
+
+    await queryRunner.query(`
+      CREATE TABLE report_history (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        created_by UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        report_type VARCHAR(50) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        format VARCHAR(10) NOT NULL,
+        snapshot JSONB NOT NULL,
+        is_pinned BOOLEAN NOT NULL DEFAULT false,
+        created_at TIMESTAMP NOT NULL DEFAULT now(),
+        updated_at TIMESTAMP NOT NULL DEFAULT now(),
+        CHECK (report_type IN ('equipment', 'inventory-records')),
+        CHECK (format IN ('csv', 'xlsx'))
+      )
+    `);
+
+    await queryRunner.query(
+      `CREATE INDEX idx_report_history_created_by ON report_history(created_by)`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX idx_report_history_user_type ON report_history(created_by, report_type)`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`DROP TABLE IF EXISTS report_history`);
     await queryRunner.query(`DROP TABLE IF EXISTS inventory_records`);
     await queryRunner.query(`DROP TABLE IF EXISTS inventories`);
     await queryRunner.query(`DROP TABLE IF EXISTS equipment`);

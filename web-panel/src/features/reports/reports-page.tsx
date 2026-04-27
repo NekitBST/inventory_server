@@ -1,5 +1,6 @@
+import { createPortal } from 'react-dom';
 import { useEffect, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card } from '../../components/ui/Card';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
@@ -7,10 +8,16 @@ import { Button } from '../../components/ui/Button';
 import { useToast } from '../../app/toast-provider';
 import { getApiErrorMessage } from '../../lib/api-error';
 import { exportReportFile } from '../../lib/report-export';
+import { useAuth } from '../auth/useAuth';
 import { equipmentApi } from '../equipment/api';
 import { inventoriesApi } from '../inventories/api';
+import { reportsApi } from './api';
 import { referencesApi } from '../references/api';
-import type { Equipment, InventoryRecord } from '../../types/entities';
+import type {
+  Equipment,
+  InventoryRecord,
+  ReportHistoryItem,
+} from '../../types/entities';
 
 type ReportType = 'equipment' | 'inventory-records';
 type ExportFormat = 'csv' | 'xlsx';
@@ -56,6 +63,28 @@ type InventoryRecordsReportRow = {
   scannedAt: string;
 };
 
+type EquipmentReportSnapshot = {
+  reportType: 'equipment';
+  format: ExportFormat;
+  search: string;
+  statusId?: number;
+  typeId?: number;
+  locationId?: number;
+  selectedEquipmentIds: string[];
+  selectedEquipmentColumns: EquipmentColumnKey[];
+};
+
+type InventoryRecordsReportSnapshot = {
+  reportType: 'inventory-records';
+  format: ExportFormat;
+  selectedInventoryId: string;
+  recordsResultStatus: 'FOUND' | 'DAMAGED' | '';
+  recordsSearch: string;
+  selectedRecordColumns: InventoryRecordColumnKey[];
+};
+
+type ReportSnapshot = EquipmentReportSnapshot | InventoryRecordsReportSnapshot;
+
 const equipmentColumns: Array<{ key: EquipmentColumnKey; label: string }> = [
   { key: 'inventoryNumber', label: 'Инвентарный номер' },
   { key: 'name', label: 'Наименование' },
@@ -90,6 +119,158 @@ function toResultStatusLabel(value: 'FOUND' | 'DAMAGED'): string {
 
 function toInventoryStatusLabel(value: 'OPEN' | 'CLOSED'): string {
   return value === 'OPEN' ? 'Открытая' : 'Закрытая';
+}
+
+function toShortId(value: string): string {
+  return value.slice(0, 8);
+}
+
+function toHistoryTitleLabel(title: string): string {
+  if (title.startsWith('Оборудование')) {
+    return 'Оборудование';
+  }
+
+  if (title.startsWith('Инвентаризация')) {
+    return 'Инвентаризация';
+  }
+
+  return title.split('•')[0]?.trim() || title;
+}
+
+function toHistoryMetaLabel(item: ReportHistoryItem): string {
+  const createdAt = new Date(item.createdAt).toLocaleString();
+  const format = item.format.toUpperCase();
+
+  if (item.reportType !== 'inventory-records') {
+    return `${createdAt} • ${format}`;
+  }
+
+  const selectedInventoryId = item.snapshot['selectedInventoryId'];
+  const shortId =
+    typeof selectedInventoryId === 'string' && selectedInventoryId.length >= 8
+      ? selectedInventoryId.slice(0, 8)
+      : '--------';
+
+  return `Id: ${shortId} • ${createdAt} • ${format}`;
+}
+
+function toNumber(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? value
+    : undefined;
+}
+
+function toStringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string')
+    : [];
+}
+
+function isEquipmentSnapshot(
+  snapshot: ReportSnapshot,
+): snapshot is EquipmentReportSnapshot {
+  return snapshot.reportType === 'equipment';
+}
+
+function isInventorySnapshot(
+  snapshot: ReportSnapshot,
+): snapshot is InventoryRecordsReportSnapshot {
+  return snapshot.reportType === 'inventory-records';
+}
+
+type ReportHistoryModalProps = {
+  isOpen: boolean;
+  items: ReportHistoryItem[];
+  isLoading: boolean;
+  isPinning: boolean;
+  onClose: () => void;
+  onApply: (item: ReportHistoryItem) => void;
+  onTogglePin: (item: ReportHistoryItem) => void;
+};
+
+function ReportHistoryModal({
+  isOpen,
+  items,
+  isLoading,
+  isPinning,
+  onClose,
+  onApply,
+  onTogglePin,
+}: ReportHistoryModalProps) {
+  if (!isOpen) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/35 p-4">
+      <section className="w-full max-w-3xl rounded-xl border border-slate-200 bg-white p-4 shadow-lg">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h3 className="text-base font-semibold text-slate-900">
+              История отчетов
+            </h3>
+            <p className="text-sm text-slate-500">
+              Нажмите на запись, чтобы восстановить параметры отчета.
+            </p>
+          </div>
+          <Button variant="secondary" onClick={onClose}>
+            Закрыть
+          </Button>
+        </div>
+
+        <div className="mt-4 max-h-[60vh] overflow-auto rounded-lg border border-slate-200">
+          {isLoading ? (
+            <div className="px-4 py-6 text-center text-sm text-slate-500">
+              Загружаем историю...
+            </div>
+          ) : items.length ? (
+            <div className="divide-y divide-slate-100">
+              {items.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex items-center justify-between gap-3 px-4 py-3"
+                >
+                  <button
+                    type="button"
+                    className="min-w-0 flex-1 text-left"
+                    onClick={() => onApply(item)}
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="truncate text-sm font-medium text-slate-900">
+                        {toHistoryTitleLabel(item.title)}
+                      </span>
+                      {item.isPinned ? (
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+                          Закреплено
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {toHistoryMetaLabel(item)}
+                    </p>
+                  </button>
+
+                  <div className="flex shrink-0 gap-2">
+                    <Button
+                      variant="secondary"
+                      onClick={() => onTogglePin(item)}
+                      disabled={isPinning}
+                    >
+                      {item.isPinned ? 'Открепить' : 'Закрепить'}
+                    </Button>
+                    <Button onClick={() => onApply(item)}>Применить</Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="px-4 py-6 text-center text-sm text-slate-500">
+              История пока пуста.
+            </div>
+          )}
+        </div>
+      </section>
+    </div>,
+    document.body,
+  );
 }
 
 async function fetchAllEquipment(params: {
@@ -143,15 +324,21 @@ async function fetchAllInventoryRecords(params: {
 }
 
 export function ReportsPage() {
+  const { user } = useAuth();
   const { pushToast } = useToast();
+  const queryClient = useQueryClient();
   const [reportType, setReportType] = useState<ReportType>('equipment');
   const [format, setFormat] = useState<ExportFormat>('xlsx');
   const [isExporting, setIsExporting] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   const [search, setSearch] = useState('');
   const [statusId, setStatusId] = useState<number | undefined>();
   const [typeId, setTypeId] = useState<number | undefined>();
   const [locationId, setLocationId] = useState<number | undefined>();
+  const [equipmentSelectionMode, setEquipmentSelectionMode] = useState<
+    'auto' | 'manual'
+  >('auto');
 
   const [selectedInventoryId, setSelectedInventoryId] = useState('');
   const [recordsResultStatus, setRecordsResultStatus] = useState<
@@ -231,6 +418,12 @@ export function ReportsPage() {
     enabled: reportType === 'inventory-records' && Boolean(selectedInventoryId),
   });
 
+  const historyQuery = useQuery({
+    queryKey: ['reports', 'history', reportType],
+    queryFn: () => reportsApi.getHistory({ reportType }),
+    enabled: isHistoryOpen && Boolean(user),
+  });
+
   const closedInventories = useMemo(
     () =>
       inventoriesQuery.data?.items.filter(
@@ -240,10 +433,15 @@ export function ReportsPage() {
   );
 
   useEffect(() => {
-    if (reportType !== 'equipment') return;
+    if (reportType !== 'equipment' || equipmentSelectionMode !== 'auto') return;
     const ids = equipmentPreviewQuery.data?.map((item) => item.id) ?? [];
     setSelectedEquipmentIds(ids);
-  }, [equipmentPreviewQuery.data, reportType]);
+  }, [equipmentPreviewQuery.data, equipmentSelectionMode, reportType]);
+
+  useEffect(() => {
+    if (reportType === 'equipment') return;
+    setEquipmentSelectionMode('auto');
+  }, [reportType]);
 
   const selectedColumnsCount = useMemo(() => {
     return reportType === 'equipment'
@@ -303,6 +501,57 @@ export function ReportsPage() {
     );
   };
 
+  const applyHistoryItem = (item: ReportHistoryItem) => {
+    const snapshot = item.snapshot as ReportSnapshot;
+
+    setReportType(item.reportType);
+    setFormat(item.format);
+
+    if (isEquipmentSnapshot(snapshot)) {
+      const selectedEquipmentColumns = toStringArray(
+        snapshot.selectedEquipmentColumns,
+      ) as EquipmentColumnKey[];
+      setSearch(snapshot.search ?? '');
+      setStatusId(toNumber(snapshot.statusId));
+      setTypeId(toNumber(snapshot.typeId));
+      setLocationId(toNumber(snapshot.locationId));
+      setSelectedEquipmentColumns(
+        selectedEquipmentColumns.length
+          ? selectedEquipmentColumns
+          : equipmentColumns.map((column) => column.key),
+      );
+      setSelectedEquipmentIds(toStringArray(snapshot.selectedEquipmentIds));
+      setEquipmentSelectionMode('manual');
+    } else if (isInventorySnapshot(snapshot)) {
+      const selectedRecordColumns = toStringArray(
+        snapshot.selectedRecordColumns,
+      ) as InventoryRecordColumnKey[];
+      setSelectedInventoryId(snapshot.selectedInventoryId);
+      setRecordsResultStatus(snapshot.recordsResultStatus);
+      setRecordsSearch(snapshot.recordsSearch);
+      setSelectedRecordColumns(
+        selectedRecordColumns.length
+          ? selectedRecordColumns
+          : inventoryRecordColumns.map((column) => column.key),
+      );
+    }
+
+    setIsHistoryOpen(false);
+  };
+
+  const handleToggleHistoryPin = async (item: ReportHistoryItem) => {
+    try {
+      await reportsApi.setHistoryPinned(item.id, { isPinned: !item.isPinned });
+      await queryClient.invalidateQueries({ queryKey: ['reports', 'history'] });
+    } catch (error) {
+      pushToast({
+        title: 'Не удалось обновить историю',
+        description: getApiErrorMessage(error),
+        tone: 'error',
+      });
+    }
+  };
+
   const handleExport = async () => {
     if (selectedColumnsCount === 0) {
       pushToast({
@@ -355,6 +604,34 @@ export function ReportsPage() {
           baseFileName: 'equipment_report',
         });
 
+        const snapshot: EquipmentReportSnapshot = {
+          reportType: 'equipment',
+          format,
+          search,
+          statusId,
+          typeId,
+          locationId,
+          selectedEquipmentIds,
+          selectedEquipmentColumns,
+        };
+
+        try {
+          await reportsApi.createHistory({
+            reportType: 'equipment',
+            format,
+            snapshot,
+          });
+          await queryClient.invalidateQueries({
+            queryKey: ['reports', 'history'],
+          });
+        } catch (historyError) {
+          pushToast({
+            title: 'Отчет выгружен, но историю не удалось сохранить',
+            description: getApiErrorMessage(historyError),
+            tone: 'warning',
+          });
+        }
+
         pushToast({ title: 'Отчет по оборудованию выгружен', tone: 'success' });
         return;
       }
@@ -381,6 +658,32 @@ export function ReportsPage() {
         baseFileName: `inventory_${selectedInventoryId.slice(0, 8)}_report`,
       });
 
+      const snapshot: InventoryRecordsReportSnapshot = {
+        reportType: 'inventory-records',
+        format,
+        selectedInventoryId,
+        recordsResultStatus,
+        recordsSearch,
+        selectedRecordColumns,
+      };
+
+      try {
+        await reportsApi.createHistory({
+          reportType: 'inventory-records',
+          format,
+          snapshot,
+        });
+        await queryClient.invalidateQueries({
+          queryKey: ['reports', 'history'],
+        });
+      } catch (historyError) {
+        pushToast({
+          title: 'Отчет выгружен, но историю не удалось сохранить',
+          description: getApiErrorMessage(historyError),
+          tone: 'warning',
+        });
+      }
+
       pushToast({ title: 'Отчет по инвентаризации выгружен', tone: 'success' });
     } catch (error) {
       const message = getApiErrorMessage(error);
@@ -396,10 +699,16 @@ export function ReportsPage() {
 
   return (
     <Card title="Отчеты">
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-4">
         <Select
           value={reportType}
-          onChange={(event) => setReportType(event.target.value as ReportType)}
+          onChange={(event) => {
+            const nextReportType = event.target.value as ReportType;
+            setReportType(nextReportType);
+            if (nextReportType === 'equipment') {
+              setEquipmentSelectionMode('auto');
+            }
+          }}
         >
           <option value="equipment">Оборудование</option>
           <option value="inventory-records">Проведенная инвентаризация</option>
@@ -415,6 +724,10 @@ export function ReportsPage() {
 
         <Button onClick={() => void handleExport()} disabled={isExporting}>
           {isExporting ? 'Формируем отчет...' : 'Скачать отчет'}
+        </Button>
+
+        <Button variant="secondary" onClick={() => setIsHistoryOpen(true)}>
+          История отчетов
         </Button>
       </div>
 
@@ -432,16 +745,20 @@ export function ReportsPage() {
             <Input
               placeholder="Поиск по названию/номеру"
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) => {
+                setEquipmentSelectionMode('auto');
+                setSearch(event.target.value);
+              }}
             />
 
             <Select
               value={statusId ?? ''}
-              onChange={(event) =>
+              onChange={(event) => {
+                setEquipmentSelectionMode('auto');
                 setStatusId(
                   event.target.value ? Number(event.target.value) : undefined,
-                )
-              }
+                );
+              }}
             >
               <option value="">Все статусы</option>
               {statusesQuery.data?.map((status) => (
@@ -453,11 +770,12 @@ export function ReportsPage() {
 
             <Select
               value={typeId ?? ''}
-              onChange={(event) =>
+              onChange={(event) => {
+                setEquipmentSelectionMode('auto');
                 setTypeId(
                   event.target.value ? Number(event.target.value) : undefined,
-                )
-              }
+                );
+              }}
             >
               <option value="">Все типы</option>
               {typesQuery.data?.map((type) => (
@@ -469,11 +787,12 @@ export function ReportsPage() {
 
             <Select
               value={locationId ?? ''}
-              onChange={(event) =>
+              onChange={(event) => {
+                setEquipmentSelectionMode('auto');
                 setLocationId(
                   event.target.value ? Number(event.target.value) : undefined,
-                )
-              }
+                );
+              }}
             >
               <option value="">Все локации</option>
               {locationsQuery.data?.map((location) => (
@@ -489,15 +808,16 @@ export function ReportsPage() {
           <h3 className="mb-2 text-sm font-semibold text-gray-900">
             Параметры отчета по инвентаризации
           </h3>
-          <div className="grid gap-2 md:grid-cols-3">
+          <div className="grid gap-2 md:grid-cols-2">
             <Select
               value={selectedInventoryId}
               onChange={(event) => setSelectedInventoryId(event.target.value)}
+              className="md:col-span-2"
             >
               <option value="">Выберите инвентаризацию</option>
               {closedInventories.map((inventory) => (
                 <option key={inventory.id} value={inventory.id}>
-                  {`${new Date(inventory.startedAt).toLocaleString()} • ${toInventoryStatusLabel(inventory.status)} • ${inventory.createdByUser?.fullName ?? '-'}`}
+                  {`Id: ${toShortId(inventory.id)} • ${new Date(inventory.startedAt).toLocaleString()} • ${toInventoryStatusLabel(inventory.status)} • ${inventory.createdByUser?.fullName ?? '-'}`}
                 </option>
               ))}
             </Select>
@@ -595,12 +915,14 @@ export function ReportsPage() {
                       }
                       onChange={(event) => {
                         if (event.target.checked) {
+                          setEquipmentSelectionMode('manual');
                           setSelectedEquipmentIds(
                             equipmentPreviewQuery.data?.map(
                               (item) => item.id,
                             ) ?? [],
                           );
                         } else {
+                          setEquipmentSelectionMode('manual');
                           setSelectedEquipmentIds([]);
                         }
                       }}
@@ -623,11 +945,13 @@ export function ReportsPage() {
                         checked={selectedEquipmentIds.includes(item.id)}
                         onChange={(event) => {
                           if (event.target.checked) {
+                            setEquipmentSelectionMode('manual');
                             setSelectedEquipmentIds((previous) => [
                               ...previous,
                               item.id,
                             ]);
                           } else {
+                            setEquipmentSelectionMode('manual');
                             setSelectedEquipmentIds((previous) =>
                               previous.filter((id) => id !== item.id),
                             );
@@ -725,6 +1049,16 @@ export function ReportsPage() {
           </div>
         </section>
       )}
+
+      <ReportHistoryModal
+        isOpen={isHistoryOpen}
+        items={historyQuery.data ?? []}
+        isLoading={historyQuery.isLoading}
+        isPinning={false}
+        onClose={() => setIsHistoryOpen(false)}
+        onApply={applyHistoryItem}
+        onTogglePin={handleToggleHistoryPin}
+      />
     </Card>
   );
 }
