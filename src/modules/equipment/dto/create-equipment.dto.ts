@@ -43,10 +43,14 @@ export class CreateEquipmentDto {
   @MaxLength(100)
   serialNumber?: string;
 
-  @ApiPropertyOptional({ example: 2, description: 'ID локации' })
+  @ApiPropertyOptional({
+    example: 2,
+    nullable: true,
+    description: 'ID локации (можно null)',
+  })
   @IsOptional()
   @IsInt()
-  locationId?: number;
+  locationId?: number | null;
 
   @ApiProperty({ example: 1, description: 'ID статуса оборудования' })
   @IsInt()

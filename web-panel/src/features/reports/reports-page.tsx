@@ -215,7 +215,7 @@ function toDateTime(value: string): string {
 }
 
 function toResultStatusLabel(value: 'FOUND' | 'DAMAGED'): string {
-  return value === 'FOUND' ? 'Найдено' : 'Повреждено';
+  return value === 'FOUND' ? 'Найдено' : 'Найдено с повреждениями';
 }
 
 function toInventoryStatusLabel(value: 'OPEN' | 'CLOSED'): string {
@@ -959,9 +959,10 @@ export function ReportsPage() {
         inventoryNumber: record.equipment?.inventoryNumber ?? '',
         name: record.equipment?.name ?? '',
         serialNumber: record.equipment?.serialNumber ?? '',
-        equipmentStatus: record.equipment?.status?.name ?? '',
+        equipmentStatus: record.statusAtEventTime,
         typeName: record.equipment?.type?.name ?? '',
-        locationName: record.equipment?.location?.name ?? '',
+        locationName:
+          record.locationAtEventTime ?? record.equipment?.location?.name ?? '',
         resultStatus: toResultStatusLabel(record.resultStatus),
         comment: record.comment ?? '',
         scannedAt: toDateTime(record.scannedAt),
@@ -1172,7 +1173,7 @@ export function ReportsPage() {
             >
               <option value="">Любой результат</option>
               <option value="FOUND">Найдено</option>
-              <option value="DAMAGED">Повреждено</option>
+              <option value="DAMAGED">Найдено с повреждениями</option>
             </Select>
 
             <Input
@@ -1356,13 +1357,15 @@ export function ReportsPage() {
                       {record.equipment?.serialNumber ?? '-'}
                     </td>
                     <td className="px-3 py-2">
-                      {record.equipment?.status?.name ?? '-'}
+                      {record.statusAtEventTime || '-'}
                     </td>
                     <td className="px-3 py-2">
                       {record.equipment?.type?.name ?? '-'}
                     </td>
                     <td className="px-3 py-2">
-                      {record.equipment?.location?.name ?? '-'}
+                      {record.locationAtEventTime ??
+                        record.equipment?.location?.name ??
+                        '-'}
                     </td>
                     <td className="px-3 py-2">
                       {toResultStatusLabel(record.resultStatus)}

@@ -45,10 +45,14 @@ export class UpdateEquipmentDto {
   @MaxLength(100)
   serialNumber?: string;
 
-  @ApiPropertyOptional({ example: 2, description: 'Новый ID локации' })
+  @ApiPropertyOptional({
+    example: 2,
+    nullable: true,
+    description: 'Новый ID локации (null чтобы снять локацию)',
+  })
   @IsOptional()
   @IsInt()
-  locationId?: number;
+  locationId?: number | null;
 
   @ApiPropertyOptional({ example: 1, description: 'Новый ID статуса' })
   @IsOptional()

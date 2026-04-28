@@ -74,6 +74,8 @@ export type InventoryRecord = {
     location?: OptionItem | null;
   } | null;
   scannedAt: string;
+  statusAtEventTime: string;
+  locationAtEventTime: string | null;
   comment: string | null;
   resultStatus: 'FOUND' | 'DAMAGED';
 };

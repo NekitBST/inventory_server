@@ -158,6 +158,7 @@ export class ReportsService {
 
     const qb = this.recordsRepo
       .createQueryBuilder('record')
+      .withDeleted()
       .leftJoinAndSelect('record.equipment', 'equipment')
       .leftJoinAndSelect('equipment.status', 'status')
       .leftJoinAndSelect('equipment.type', 'type')
@@ -206,9 +207,9 @@ export class ReportsService {
         record.equipment?.inventoryNumber ?? '',
         record.equipment?.name ?? '',
         record.equipment?.serialNumber ?? '',
-        record.equipment?.status?.name ?? '',
+        record.statusAtEventTime,
         record.equipment?.type?.name ?? '',
-        record.equipment?.location?.name ?? '',
+        record.locationAtEventTime ?? '',
         this.toResultStatusLabel(record.resultStatus),
         record.comment ?? '',
         this.formatDate(record.scannedAt),
@@ -224,7 +225,7 @@ export class ReportsService {
   }
 
   private toResultStatusLabel(value: 'FOUND' | 'DAMAGED'): string {
-    return value === 'FOUND' ? 'Найдено' : 'Повреждено';
+    return value === 'FOUND' ? 'Найдено' : 'Найдено с повреждениями';
   }
 
   private toInventoryStatusLabel(value: 'OPEN' | 'CLOSED'): string {

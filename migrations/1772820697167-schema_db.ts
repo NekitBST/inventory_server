@@ -102,6 +102,8 @@ export class SchemaDb1772820697167 implements MigrationInterface {
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         inventory_id UUID NOT NULL REFERENCES inventories(id) ON DELETE CASCADE,
         equipment_id UUID NOT NULL REFERENCES equipment(id) ON DELETE RESTRICT,
+        status_at_event_time VARCHAR(50) NOT NULL,
+        location_at_event_time VARCHAR(255),
         scanned_at TIMESTAMP NOT NULL DEFAULT now(),
         comment TEXT,
         result_status VARCHAR(20) NOT NULL,

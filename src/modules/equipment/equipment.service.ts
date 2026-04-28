@@ -12,6 +12,8 @@ import { UpdateEquipmentDto } from './dto/update-equipment.dto';
 import { Location } from '../locations/entities/location.entity';
 import { EquipmentStatus } from '../equipment-statuses/entities/equipment-status.entity';
 import { EquipmentType } from '../equipment-types/entities/equipment-type.entity';
+import { Inventory } from '../inventories/entities/inventory.entity';
+import { InventoryRecord } from '../inventory-records/entities/inventory-record.entity';
 
 @Injectable()
 export class EquipmentService {
@@ -24,6 +26,10 @@ export class EquipmentService {
     private readonly statusesRepo: Repository<EquipmentStatus>,
     @InjectRepository(EquipmentType)
     private readonly typesRepo: Repository<EquipmentType>,
+    @InjectRepository(Inventory)
+    private readonly inventoriesRepo: Repository<Inventory>,
+    @InjectRepository(InventoryRecord)
+    private readonly inventoryRecordsRepo: Repository<InventoryRecord>,
   ) {}
 
   async findAll(params: FindEquipmentQueryDto) {
@@ -136,6 +142,9 @@ export class EquipmentService {
       equipment.inventoryNumber = dto.inventoryNumber;
     }
 
+    let statusAtEventTime: string | undefined;
+    let locationAtEventTime: string | null | undefined;
+
     if (dto.name !== undefined) {
       equipment.name = dto.name;
     }
@@ -154,6 +163,7 @@ export class EquipmentService {
       });
       if (!status) throw new NotFoundException('Статус оборудования не найден');
       equipment.statusId = dto.statusId;
+      statusAtEventTime = status.name;
     }
 
     if (dto.typeId !== undefined && dto.typeId !== equipment.typeId) {
@@ -166,14 +176,65 @@ export class EquipmentService {
       dto.locationId !== undefined &&
       dto.locationId !== equipment.locationId
     ) {
-      const location = await this.locationsRepo.findOne({
-        where: { id: dto.locationId },
-      });
-      if (!location) throw new NotFoundException('Локация не найдена');
-      equipment.locationId = dto.locationId;
+      if (dto.locationId === null) {
+        equipment.locationId = null;
+        locationAtEventTime = null;
+      } else {
+        const location = await this.locationsRepo.findOne({
+          where: { id: dto.locationId },
+        });
+        if (!location) throw new NotFoundException('Локация не найдена');
+        equipment.locationId = dto.locationId;
+        locationAtEventTime = location.name;
+      }
     }
 
-    return this.saveWithUniqueConstraintHandling(equipment);
+    const updatedEquipment =
+      await this.saveWithUniqueConstraintHandling(equipment);
+
+    if (statusAtEventTime !== undefined || locationAtEventTime !== undefined) {
+      await this.syncOpenInventoryRecordsState(
+        equipment.id,
+        statusAtEventTime,
+        locationAtEventTime,
+      );
+    }
+
+    return updatedEquipment;
+  }
+
+  private async syncOpenInventoryRecordsState(
+    equipmentId: string,
+    statusAtEventTime?: string,
+    locationAtEventTime?: string | null,
+  ): Promise<void> {
+    const openInventories = await this.inventoriesRepo.find({
+      where: { status: 'OPEN' },
+      select: ['id'],
+    });
+
+    if (!openInventories.length) return;
+
+    const openInventoryIds = openInventories.map((inventory) => inventory.id);
+    const payload: Partial<InventoryRecord> = {};
+
+    if (statusAtEventTime !== undefined) {
+      payload.statusAtEventTime = statusAtEventTime;
+    }
+
+    if (locationAtEventTime !== undefined) {
+      payload.locationAtEventTime = locationAtEventTime;
+    }
+
+    if (!Object.keys(payload).length) return;
+
+    await this.inventoryRecordsRepo
+      .createQueryBuilder()
+      .update(InventoryRecord)
+      .set(payload)
+      .where('equipment_id = :equipmentId', { equipmentId })
+      .andWhere('inventory_id IN (:...openInventoryIds)', { openInventoryIds })
+      .execute();
   }
 
   async remove(id: string): Promise<void> {
@@ -191,7 +252,7 @@ export class EquipmentService {
   private async ensureReferencesExist(
     statusId: number,
     typeId: number,
-    locationId?: number,
+    locationId?: number | null,
   ): Promise<void> {
     const status = await this.statusesRepo.findOne({ where: { id: statusId } });
     if (!status) throw new NotFoundException('Статус оборудования не найден');
@@ -199,7 +260,7 @@ export class EquipmentService {
     const type = await this.typesRepo.findOne({ where: { id: typeId } });
     if (!type) throw new NotFoundException('Тип оборудования не найден');
 
-    if (locationId !== undefined) {
+    if (locationId !== undefined && locationId !== null) {
       const location = await this.locationsRepo.findOne({
         where: { id: locationId },
       });

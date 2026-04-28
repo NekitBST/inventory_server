@@ -6,6 +6,8 @@ import { EquipmentController } from './equipment.controller';
 import { Location } from '../locations/entities/location.entity';
 import { EquipmentStatus } from '../equipment-statuses/entities/equipment-status.entity';
 import { EquipmentType } from '../equipment-types/entities/equipment-type.entity';
+import { Inventory } from '../inventories/entities/inventory.entity';
+import { InventoryRecord } from '../inventory-records/entities/inventory-record.entity';
 
 @Module({
   imports: [
@@ -14,6 +16,8 @@ import { EquipmentType } from '../equipment-types/entities/equipment-type.entity
       Location,
       EquipmentStatus,
       EquipmentType,
+      Inventory,
+      InventoryRecord,
     ]),
   ],
   providers: [EquipmentService],

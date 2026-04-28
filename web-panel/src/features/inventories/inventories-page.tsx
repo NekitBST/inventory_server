@@ -17,7 +17,7 @@ function toInventoryStatusLabel(value: 'OPEN' | 'CLOSED'): string {
 }
 
 function toResultStatusLabel(value: 'FOUND' | 'DAMAGED'): string {
-  return value === 'FOUND' ? 'Найдено' : 'Повреждено';
+  return value === 'FOUND' ? 'Найдено' : 'Найдено с повреждениями';
 }
 
 function toShortId(value: string): string {
@@ -266,7 +266,7 @@ export function InventoriesPage() {
             >
               <option value="">Любой результат</option>
               <option value="FOUND">Найдено</option>
-              <option value="DAMAGED">Повреждено</option>
+              <option value="DAMAGED">Найдено с повреждениями</option>
             </Select>
 
             <Select
@@ -296,11 +296,15 @@ export function InventoriesPage() {
                         : record.equipmentId}
                     </p>
                     {record.equipment?.type?.name ||
+                    record.locationAtEventTime ||
                     record.equipment?.location?.name ? (
                       <p className="truncate text-[13px] text-gray-500">
                         {[
                           record.equipment?.type?.name,
-                          record.equipment?.location?.name,
+                          record.locationAtEventTime,
+                          !record.locationAtEventTime
+                            ? record.equipment?.location?.name
+                            : undefined,
                         ]
                           .filter(Boolean)
                           .join(' • ')}
@@ -317,6 +321,9 @@ export function InventoriesPage() {
                 </div>
                 <p className="text-[13px] text-gray-500">
                   {new Date(record.scannedAt).toLocaleString()}
+                </p>
+                <p className="text-[13px] text-gray-600">
+                  Статус - {record.statusAtEventTime}
                 </p>
                 {record.comment ? (
                   <p className="text-sm text-gray-700">{record.comment}</p>

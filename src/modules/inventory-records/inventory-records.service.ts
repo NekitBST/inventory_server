@@ -36,12 +36,15 @@ export class InventoryRecordsService {
 
     const equipment = await this.equipmentRepo.findOne({
       where: { id: dto.equipmentId },
+      relations: ['status', 'location'],
     });
     if (!equipment) throw new NotFoundException('Оборудование не найдено');
 
     const record = this.recordsRepo.create({
       inventoryId: dto.inventoryId,
       equipmentId: dto.equipmentId,
+      statusAtEventTime: equipment.status?.name ?? '',
+      locationAtEventTime: equipment.location?.name ?? null,
       comment: dto.comment ?? null,
       resultStatus: 'FOUND',
     });
@@ -79,6 +82,7 @@ export class InventoryRecordsService {
 
     const qb = this.recordsRepo
       .createQueryBuilder('record')
+      .withDeleted()
       .leftJoinAndSelect('record.equipment', 'equipment')
       .leftJoinAndSelect('equipment.status', 'equipmentStatus')
       .leftJoinAndSelect('equipment.type', 'equipmentType')

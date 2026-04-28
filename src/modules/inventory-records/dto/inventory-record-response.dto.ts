@@ -4,7 +4,23 @@ class InventoryRecordDictionaryItemDto {
   @ApiProperty({ example: 1 })
   id: number;
 
-  @ApiProperty({ example: 'Ноутбук' })
+  @ApiProperty({ example: 'В работе' })
+  name: string;
+}
+
+class InventoryRecordTypeItemDto {
+  @ApiProperty({ example: 4 })
+  id: number;
+
+  @ApiProperty({ example: 'Коммутатор' })
+  name: string;
+}
+
+class InventoryRecordLocationItemDto {
+  @ApiProperty({ example: 6 })
+  id: number;
+
+  @ApiProperty({ example: 'Кабинет №2' })
   name: string;
 }
 
@@ -19,13 +35,13 @@ class InventoryRecordEquipmentDto {
   inventoryNumber: string;
 
   @ApiProperty({
-    example: 'Ноутбук Lenovo ThinkPad',
+    example: 'Huawei S5735-L24T4X-A1',
     description: 'Название оборудования',
   })
   name: string;
 
   @ApiPropertyOptional({
-    example: 'SN-ABC-12345',
+    example: 'HW-S5735-0001',
     nullable: true,
     description: 'Серийный номер оборудования',
   })
@@ -39,16 +55,16 @@ class InventoryRecordEquipmentDto {
   status?: InventoryRecordDictionaryItemDto | null;
 
   @ApiPropertyOptional({
-    type: () => InventoryRecordDictionaryItemDto,
+    type: () => InventoryRecordTypeItemDto,
     nullable: true,
   })
-  type?: InventoryRecordDictionaryItemDto | null;
+  type?: InventoryRecordTypeItemDto | null;
 
   @ApiPropertyOptional({
-    type: () => InventoryRecordDictionaryItemDto,
+    type: () => InventoryRecordLocationItemDto,
     nullable: true,
   })
-  location?: InventoryRecordDictionaryItemDto | null;
+  location?: InventoryRecordLocationItemDto | null;
 }
 
 export class InventoryRecordResponseDto {
@@ -82,6 +98,19 @@ export class InventoryRecordResponseDto {
     description: 'Время сканирования',
   })
   scannedAt: Date;
+
+  @ApiProperty({
+    example: 'В работе',
+    description: 'Статус оборудования на момент проведения',
+  })
+  statusAtEventTime: string;
+
+  @ApiPropertyOptional({
+    example: 'Кабинет №2',
+    nullable: true,
+    description: 'Локация оборудования на момент проведения',
+  })
+  locationAtEventTime: string | null;
 
   @ApiPropertyOptional({
     example: 'Отличное состояние, все работает',

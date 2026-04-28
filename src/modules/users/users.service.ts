@@ -87,6 +87,18 @@ export class UsersService {
     const user = await this.usersRepo.findOne({ where: { id } });
     if (!user) throw new NotFoundException('Пользователь не найден');
 
+    const defaultAdminLogin = process.env.ADMIN_LOGIN?.trim().toLowerCase();
+
+    if (
+      dto.roleId !== undefined &&
+      defaultAdminLogin &&
+      user.email.trim().toLowerCase() === defaultAdminLogin
+    ) {
+      throw new ConflictException(
+        'Нельзя менять роль дефолтного администратора',
+      );
+    }
+
     if (dto.fullName !== undefined) user.fullName = dto.fullName;
     if (dto.roleId !== undefined) user.roleId = dto.roleId;
     if (dto.password !== undefined) {

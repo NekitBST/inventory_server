@@ -25,6 +25,17 @@ export class InventoryRecord {
   @JoinColumn({ name: 'equipment_id' })
   equipment?: Equipment | null;
 
+  @Column({ type: 'varchar', length: 50, name: 'status_at_event_time' })
+  statusAtEventTime: string;
+
+  @Column({
+    type: 'varchar',
+    length: 255,
+    name: 'location_at_event_time',
+    nullable: true,
+  })
+  locationAtEventTime: string | null;
+
   @CreateDateColumn({ name: 'scanned_at' })
   scannedAt: Date;
 
