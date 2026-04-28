@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Input } from '../../components/ui/Input';
 import type { LabelSize } from './types';
 
@@ -7,7 +8,50 @@ type LabelSettingsProps = {
 };
 
 export function LabelSettings({ size, onChange }: LabelSettingsProps) {
+  const [draftValues, setDraftValues] = useState({
+    width: String(size.width),
+    height: String(size.height),
+    borderMargin: String(size.borderMargin),
+    nameFontSize: String(size.nameFontSize),
+    fieldFontSize: String(size.fieldFontSize),
+    nameMargin: String(size.nameMargin),
+    nameSpacing: String(size.nameSpacing),
+    textSpacing: String(size.textSpacing),
+    dateFontSize: String(size.dateFontSize),
+    qrSize: String(size.qrSize),
+  });
+
+  useEffect(() => {
+    setDraftValues({
+      width: String(size.width),
+      height: String(size.height),
+      borderMargin: String(size.borderMargin),
+      nameFontSize: String(size.nameFontSize),
+      fieldFontSize: String(size.fieldFontSize),
+      nameMargin: String(size.nameMargin),
+      nameSpacing: String(size.nameSpacing),
+      textSpacing: String(size.textSpacing),
+      dateFontSize: String(size.dateFontSize),
+      qrSize: String(size.qrSize),
+    });
+  }, [
+    size.width,
+    size.height,
+    size.borderMargin,
+    size.nameFontSize,
+    size.fieldFontSize,
+    size.nameMargin,
+    size.nameSpacing,
+    size.textSpacing,
+    size.dateFontSize,
+    size.qrSize,
+  ]);
+
   const updateField = (field: keyof LabelSize, value: string) => {
+    setDraftValues((previous) => ({ ...previous, [field]: value }));
+
+    if (!value.trim()) return;
+
     const nextValue = Number.parseFloat(value);
     if (!Number.isNaN(nextValue) && nextValue > 0) {
       onChange({ ...size, [field]: nextValue });
@@ -41,7 +85,7 @@ export function LabelSettings({ size, onChange }: LabelSettingsProps) {
               type="number"
               step="0.1"
               min="1"
-              value={size.width}
+              value={draftValues.width}
               onChange={(event) =>
                 updateField('width', event.currentTarget.value)
               }
@@ -59,7 +103,7 @@ export function LabelSettings({ size, onChange }: LabelSettingsProps) {
               type="number"
               step="0.1"
               min="1"
-              value={size.height}
+              value={draftValues.height}
               onChange={(event) =>
                 updateField('height', event.currentTarget.value)
               }
@@ -85,7 +129,7 @@ export function LabelSettings({ size, onChange }: LabelSettingsProps) {
               type="number"
               step="0.1"
               min="0"
-              value={size.borderMargin}
+              value={draftValues.borderMargin}
               onChange={(event) =>
                 updateField('borderMargin', event.currentTarget.value)
               }
@@ -103,7 +147,7 @@ export function LabelSettings({ size, onChange }: LabelSettingsProps) {
               type="number"
               step="0.1"
               min="0"
-              value={size.nameMargin}
+              value={draftValues.nameMargin}
               onChange={(event) =>
                 updateField('nameMargin', event.currentTarget.value)
               }
@@ -121,7 +165,7 @@ export function LabelSettings({ size, onChange }: LabelSettingsProps) {
               type="number"
               step="0.1"
               min="0"
-              value={size.nameSpacing}
+              value={draftValues.nameSpacing}
               onChange={(event) =>
                 updateField('nameSpacing', event.currentTarget.value)
               }
@@ -139,7 +183,7 @@ export function LabelSettings({ size, onChange }: LabelSettingsProps) {
               type="number"
               step="0.1"
               min="0"
-              value={size.textSpacing}
+              value={draftValues.textSpacing}
               onChange={(event) =>
                 updateField('textSpacing', event.currentTarget.value)
               }
@@ -166,7 +210,7 @@ export function LabelSettings({ size, onChange }: LabelSettingsProps) {
               step="0.5"
               min="6"
               max="20"
-              value={size.nameFontSize}
+              value={draftValues.nameFontSize}
               onChange={(event) =>
                 updateField('nameFontSize', event.currentTarget.value)
               }
@@ -185,7 +229,7 @@ export function LabelSettings({ size, onChange }: LabelSettingsProps) {
               step="0.5"
               min="6"
               max="20"
-              value={size.fieldFontSize}
+              value={draftValues.fieldFontSize}
               onChange={(event) =>
                 updateField('fieldFontSize', event.currentTarget.value)
               }
@@ -225,7 +269,7 @@ export function LabelSettings({ size, onChange }: LabelSettingsProps) {
                 step="0.1"
                 min="0.5"
                 max="10"
-                value={size.qrSize}
+                value={draftValues.qrSize}
                 onChange={(event) =>
                   updateField('qrSize', event.currentTarget.value)
                 }
@@ -295,8 +339,8 @@ export function LabelSettings({ size, onChange }: LabelSettingsProps) {
                 type="number"
                 step="0.5"
                 min="6"
-                max="20"
-                value={size.dateFontSize}
+                max="16"
+                value={draftValues.dateFontSize}
                 onChange={(event) =>
                   updateField('dateFontSize', event.currentTarget.value)
                 }

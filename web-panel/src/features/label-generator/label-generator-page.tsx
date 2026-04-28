@@ -608,8 +608,8 @@ export function LabelGeneratorPage() {
 
             {fileItems.length ? (
               <Card title="Позиции из файла">
-                <div className="max-h-[420px] overflow-auto rounded-xl border border-gray-200">
-                  <table className="min-w-[720px] text-left text-sm">
+                <div className="max-h-[420px] overflow-x-auto rounded-xl border border-gray-200">
+                  <table className="min-w-full w-full text-left text-sm">
                     <thead className="sticky top-0 bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                       <tr>
                         <th className="px-3 py-2">№</th>
@@ -658,7 +658,7 @@ export function LabelGeneratorPage() {
                     Режим печати
                   </p>
                   <p className="mt-1 text-sm text-gray-500">
-                    Термопринтер или печать на A4
+                    Термопринтер или печать на листе A4
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -767,7 +767,7 @@ export function LabelGeneratorPage() {
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     placeholder="Инвентарный номер, наименование или серийный номер"
-                    className="max-w-[360px]"
+                    className="max-w-[1000px]"
                   />
                 </div>
 
@@ -785,7 +785,7 @@ export function LabelGeneratorPage() {
                             : undefined,
                         )
                       }
-                      className="max-w-[190px]"
+                      className="max-w-[200px]"
                     >
                       <option value="">Все статусы</option>
                       {statusesQuery.data?.map((item) => (
@@ -809,7 +809,7 @@ export function LabelGeneratorPage() {
                             : undefined,
                         )
                       }
-                      className="max-w-[190px]"
+                      className="max-w-[200px]"
                     >
                       <option value="">Все типы</option>
                       {typesQuery.data?.map((item) => (
@@ -833,7 +833,7 @@ export function LabelGeneratorPage() {
                             : undefined,
                         )
                       }
-                      className="max-w-[190px]"
+                      className="max-w-[200px]"
                     >
                       <option value="">Все локации</option>
                       {locationsQuery.data?.map((item) => (
@@ -851,7 +851,7 @@ export function LabelGeneratorPage() {
                     <Select
                       value={limit}
                       onChange={(event) => setLimit(Number(event.target.value))}
-                      className="max-w-[160px]"
+                      className="max-w-[200px]"
                     >
                       <option value={10}>10</option>
                       <option value={20}>20</option>
@@ -896,7 +896,7 @@ export function LabelGeneratorPage() {
               </div>
 
               <div className="overflow-x-auto rounded-xl border border-gray-200">
-                <table className="min-w-[980px] text-left text-sm">
+                <table className="min-w-full w-full text-left text-sm">
                   <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                     <tr>
                       <th className="px-3 py-2">Выбор</th>
@@ -1001,7 +1001,7 @@ export function LabelGeneratorPage() {
                     Режим печати
                   </p>
                   <p className="mt-1 text-sm text-gray-500">
-                    Термопринтер или печать на A4
+                    Термопринтер или печать на листе A4
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -1123,64 +1123,179 @@ export function LabelGeneratorPage() {
             <div className="max-h-[calc(90vh-80px)] overflow-y-auto px-6 py-5 text-sm text-gray-700">
               <div className="space-y-5">
                 <section>
-                  <h3 className="mb-2 text-base font-semibold text-gray-900">
-                    Загрузка из файла
-                  </h3>
-                  <p className="mb-2">
-                    Загрузите Excel-файл формата .xlsx или .xls. Таблица может
-                    содержать столбцы №, Наименование оборудования, Инвентарный
-                    номер и Серийный номер.
-                  </p>
-                  <ul className="list-disc space-y-1 pl-5">
-                    <li>Главное поле для генерации — инвентарный номер.</li>
-                    <li>
-                      Если наименование пустое, в предпросмотре и PDF будет
-                      показано «Не указано».
-                    </li>
-                    <li>
-                      Если серийного номера нет, он просто не отображается.
-                    </li>
-                    <li>
-                      Если в файле нет ни одного инвентарного номера, генерация
-                      не запускается.
-                    </li>
-                  </ul>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                    <h3 className="text-base font-semibold text-gray-900">
+                      1. Загрузка файла
+                    </h3>
+                    <p className="mt-2 leading-6 text-gray-700">
+                      Для начала работы загрузите Excel-файл формата .xlsx или
+                      .xls. Подойдет обычная таблица из учета оборудования, где
+                      каждая строка — это отдельная позиция для этикетки.
+                    </p>
+                    <ul className="mt-3 list-disc space-y-1 pl-5 text-gray-700">
+                      <li>Обязательное поле только одно: инвентарный номер.</li>
+                      <li>
+                        Если наименование пустое, в предпросмотре и PDF будет
+                        показано «Не указано».
+                      </li>
+                      <li>Серийный номер можно не заполнять.</li>
+                      <li>
+                        Если инвентарного номера нет, строка не попадет в
+                        генерацию.
+                      </li>
+                    </ul>
+                  </div>
                 </section>
 
                 <section>
-                  <h3 className="mb-2 text-base font-semibold text-gray-900">
-                    Загрузка из БД
-                  </h3>
-                  <p className="mb-2">
-                    Переключитесь на вкладку загрузки из БД и отберите
-                    оборудование через фильтры и чекбоксы. Выбранные позиции
-                    попадут в экспорт PDF.
-                  </p>
-                  <ul className="list-disc space-y-1 pl-5">
-                    <li>
-                      Доступны те же фильтры, что и на странице оборудования.
-                    </li>
-                    <li>
-                      Можно выбрать несколько позиций и экспортировать их одним
-                      PDF.
-                    </li>
-                    <li>Для экспорта используются только отмеченные строки.</li>
-                  </ul>
+                  <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                    <h3 className="text-base font-semibold text-gray-900">
+                      2. Структура файла
+                    </h3>
+                    <p className="mt-2 leading-6 text-gray-700">
+                      Ниже пример таблицы, которую удобно использовать как
+                      шаблон.
+                    </p>
+
+                    <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200">
+                      <table className="w-full table-fixed border-collapse text-left text-xs lg:text-sm">
+                        <thead>
+                          <tr className="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500 lg:text-xs">
+                            <th className="border-b border-slate-200 px-2 py-2 lg:px-3">
+                              №
+                            </th>
+                            <th className="border-b border-slate-200 px-2 py-2 lg:px-3">
+                              Наименование оборудования
+                            </th>
+                            <th className="border-b border-slate-200 px-2 py-2 lg:px-3">
+                              Инвентарный номер
+                            </th>
+                            <th className="border-b border-slate-200 px-2 py-2 lg:px-3">
+                              Серийный номер
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="bg-white">
+                          <tr>
+                            <td className="border-b border-slate-100 px-2 py-2 lg:px-3">
+                              1
+                            </td>
+                            <td className="border-b border-slate-100 px-2 py-2 lg:px-3 break-words">
+                              Huawei S5720-56C
+                            </td>
+                            <td className="border-b border-slate-100 px-2 py-2 font-mono lg:px-3">
+                              482651
+                            </td>
+                            <td className="border-b border-slate-100 px-2 py-2 font-mono lg:px-3">
+                              FCZB68D12
+                            </td>
+                          </tr>
+                          <tr>
+                            <td className="px-2 py-2 lg:px-3">2</td>
+                            <td className="px-2 py-2 break-words lg:px-3">
+                              APC NetBotz200
+                            </td>
+                            <td className="px-2 py-2 font-mono lg:px-3">
+                              472651
+                            </td>
+                            <td className="px-2 py-2 font-mono lg:px-3">
+                              JBD25UN25D
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+
+                    <div className="mt-4 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-3">
+                      <p className="font-semibold text-slate-900">Важно</p>
+                      <ul className="mt-2 list-disc space-y-1 pl-5 text-slate-700">
+                        <li>Файл должен содержать хотя бы одну позицию.</li>
+                        <li>
+                          Инвентарный номер используется для генерации этикетки.
+                        </li>
+                        <li>
+                          Если наименование или примечание отсутствуют, это не
+                          мешает импорту.
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
                 </section>
 
                 <section>
-                  <h3 className="mb-2 text-base font-semibold text-gray-900">
-                    Режимы печати
-                  </h3>
-                  <ul className="list-disc space-y-1 pl-5">
-                    <li>
-                      Термопринтер — каждая этикетка на отдельной странице.
-                    </li>
-                    <li>
-                      Печать на A4 — несколько этикеток на одном листе по
-                      текущему размеру.
-                    </li>
-                  </ul>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                    <h3 className="text-base font-semibold text-gray-900">
+                      3. Загрузка из БД
+                    </h3>
+                    <p className="mt-2 leading-6 text-gray-700">
+                      Если данные уже есть в системе, переключитесь на вкладку
+                      загрузки из БД. Отфильтруйте оборудование, отметьте нужные
+                      строки чекбоксами и отправьте их в PDF.
+                    </p>
+                    <ul className="mt-3 list-disc space-y-1 pl-5 text-gray-700">
+                      <li>
+                        Можно искать по названию, инвентарному номеру и типу.
+                      </li>
+                      <li>
+                        Для экспорта используются только отмеченные строки.
+                      </li>
+                      <li>
+                        Если ничего не выбрано, PDF не создается до выбора хотя
+                        бы одной позиции.
+                      </li>
+                    </ul>
+                  </div>
+                </section>
+
+                <section>
+                  <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                    <h3 className="text-base font-semibold text-gray-900">
+                      4. Настройки этикетки
+                    </h3>
+                    <p className="mt-2 leading-6 text-gray-700">
+                      Здесь можно менять параметры этикетки под задачу: размер,
+                      отступы, шрифты, QR-код и прочие настройки отображения.
+                    </p>
+                    <p className="mt-2 text-gray-700">
+                      Выберите удобные значения и сразу посмотрите результат в
+                      предпросмотре.
+                    </p>
+                  </div>
+                </section>
+
+                <section>
+                  <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                    <h3 className="text-base font-semibold text-gray-900">
+                      5. Экспорт в PDF
+                    </h3>
+                    <p className="mt-2 leading-6 text-gray-700">
+                      Когда всё готово, нажмите кнопку экспорта и скачайте PDF с
+                      этикетками. Сверху также можно выбрать режим печати: для
+                      термопринтера или для листа A4.
+                    </p>
+                    <ul className="mt-3 list-disc space-y-1 pl-5 text-gray-700">
+                      <li>Для БД экспортируются только отмеченные строки.</li>
+                      <li>
+                        Для файла экспортируется всё содержимое загруженной
+                        таблицы.
+                      </li>
+                    </ul>
+                  </div>
+                </section>
+
+                <section>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                    <h3 className="text-base font-semibold text-gray-900">
+                      6. Режимы печати
+                    </h3>
+                    <ul className="mt-3 list-disc space-y-1 pl-5 text-gray-700">
+                      <li>Термопринтер: каждая этикетка выводится отдельно.</li>
+                      <li>
+                        Печать на листе A4: несколько этикеток можно разместить
+                        на одном листе.
+                      </li>
+                    </ul>
+                  </div>
                 </section>
               </div>
             </div>

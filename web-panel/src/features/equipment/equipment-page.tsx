@@ -221,7 +221,7 @@ export function EquipmentPage() {
           />
 
           <Input
-            placeholder="Серийный номер"
+            placeholder="Серийный номер (опционально)"
             value={form.serialNumber}
             onChange={(event) =>
               setForm((previous) => ({
