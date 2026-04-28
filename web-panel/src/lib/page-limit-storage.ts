@@ -1,4 +1,4 @@
-const ALLOWED_PAGE_LIMITS = [10, 20, 50, 100] as const;
+const ALLOWED_PAGE_LIMITS = [10, 20, 50, 100, 200, 500] as const;
 
 type AllowedPageLimit = (typeof ALLOWED_PAGE_LIMITS)[number];
 

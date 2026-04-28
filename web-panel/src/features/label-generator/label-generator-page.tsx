@@ -12,7 +12,6 @@ import { Input } from '../../components/ui/Input';
 import { Pagination } from '../../components/ui/Pagination';
 import { Select } from '../../components/ui/Select';
 import { useToast } from '../../app/toast-provider';
-import { getApiErrorMessage } from '../../lib/api-error';
 import { readPageLimit, savePageLimit } from '../../lib/page-limit-storage';
 import { equipmentApi } from '../equipment/api';
 import { referencesApi } from '../references/api';
@@ -37,6 +36,83 @@ const equipmentColumns = [
   { key: 'name', label: 'Наименование' },
   { key: 'serialNumber', label: 'Серийный номер' },
 ] as const;
+
+const LABEL_GENERATOR_STORAGE_KEY = 'label-generator.settings';
+
+type LabelGeneratorStoredState = {
+  sourceMode: LabelSourceMode;
+  printMode: LabelPrintMode;
+  size: LabelSize;
+  limit: number;
+  search: string;
+  statusId: number | null;
+  typeId: number | null;
+  locationId: number | null;
+  selectedEquipmentIds: string[];
+  selectedEquipmentMap: Record<string, LabelItem>;
+  fileIndex: number;
+  equipmentPreviewIndex: number;
+  fileName: string;
+};
+
+function readStoredLabelGeneratorState(): LabelGeneratorStoredState | null {
+  if (typeof window === 'undefined') return null;
+
+  const raw = window.localStorage.getItem(LABEL_GENERATOR_STORAGE_KEY);
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw) as Partial<LabelGeneratorStoredState>;
+
+    return {
+      sourceMode: parsed.sourceMode === 'database' ? 'database' : 'file',
+      printMode: parsed.printMode === 'a4' ? 'a4' : 'single',
+      size: {
+        ...DEFAULT_LABEL_SIZE,
+        ...(parsed.size ?? {}),
+      },
+      limit:
+        typeof parsed.limit === 'number' && parsed.limit > 0
+          ? parsed.limit
+          : 20,
+      search: parsed.search ?? '',
+      statusId: typeof parsed.statusId === 'number' ? parsed.statusId : null,
+      typeId: typeof parsed.typeId === 'number' ? parsed.typeId : null,
+      locationId:
+        typeof parsed.locationId === 'number' ? parsed.locationId : null,
+      selectedEquipmentIds: Array.isArray(parsed.selectedEquipmentIds)
+        ? parsed.selectedEquipmentIds.filter(
+            (value): value is string => typeof value === 'string',
+          )
+        : [],
+      selectedEquipmentMap:
+        parsed.selectedEquipmentMap &&
+        typeof parsed.selectedEquipmentMap === 'object'
+          ? parsed.selectedEquipmentMap
+          : {},
+      fileIndex:
+        typeof parsed.fileIndex === 'number' && parsed.fileIndex >= 0
+          ? parsed.fileIndex
+          : 0,
+      equipmentPreviewIndex:
+        typeof parsed.equipmentPreviewIndex === 'number' &&
+        parsed.equipmentPreviewIndex >= 0
+          ? parsed.equipmentPreviewIndex
+          : 0,
+      fileName: parsed.fileName ?? '',
+    };
+  } catch {
+    return null;
+  }
+}
+
+function saveStoredLabelGeneratorState(state: LabelGeneratorStoredState): void {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(
+    LABEL_GENERATOR_STORAGE_KEY,
+    JSON.stringify(state),
+  );
+}
 
 function toLabelName(item: LabelItem): string {
   return item.name.trim() || 'Не указано';
@@ -129,7 +205,6 @@ export function LabelGeneratorPage() {
   const [printMode, setPrintMode] = useState<LabelPrintMode>('single');
   const [size, setSize] = useState<LabelSize>(DEFAULT_LABEL_SIZE);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const [instructionsOpen, setInstructionsOpen] = useState(false);
   const [fileItems, setFileItems] = useState<LabelItem[]>([]);
   const [fileIndex, setFileIndex] = useState(0);
@@ -149,6 +224,64 @@ export function LabelGeneratorPage() {
     Record<string, LabelItem>
   >({});
   const [equipmentPreviewIndex, setEquipmentPreviewIndex] = useState(0);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+
+  useEffect(() => {
+    const stored = readStoredLabelGeneratorState();
+
+    if (stored) {
+      setSourceMode(stored.sourceMode);
+      setPrintMode(stored.printMode);
+      setSize(stored.size);
+      setLimit(stored.limit);
+      setSearch(stored.search);
+      setStatusId(stored.statusId ?? undefined);
+      setTypeId(stored.typeId ?? undefined);
+      setLocationId(stored.locationId ?? undefined);
+      setSelectedEquipmentIds(stored.selectedEquipmentIds);
+      setSelectedEquipmentMap(stored.selectedEquipmentMap);
+      setFileIndex(stored.fileIndex);
+      setEquipmentPreviewIndex(stored.equipmentPreviewIndex);
+      setFileName(stored.fileName);
+    }
+
+    setSettingsLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (!settingsLoaded) return;
+
+    saveStoredLabelGeneratorState({
+      sourceMode,
+      printMode,
+      size,
+      limit,
+      search,
+      statusId: statusId ?? null,
+      typeId: typeId ?? null,
+      locationId: locationId ?? null,
+      selectedEquipmentIds,
+      selectedEquipmentMap,
+      fileIndex,
+      equipmentPreviewIndex,
+      fileName,
+    });
+  }, [
+    settingsLoaded,
+    sourceMode,
+    printMode,
+    size,
+    limit,
+    search,
+    statusId,
+    typeId,
+    locationId,
+    selectedEquipmentIds,
+    selectedEquipmentMap,
+    fileIndex,
+    equipmentPreviewIndex,
+    fileName,
+  ]);
 
   const filters = useMemo(
     () => ({
@@ -192,7 +325,7 @@ export function LabelGeneratorPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [search, statusId, typeId, locationId]);
+  }, [search, statusId, typeId, locationId, limit]);
 
   useEffect(() => {
     if (sourceMode === 'file') {
@@ -208,11 +341,7 @@ export function LabelGeneratorPage() {
     .filter((item): item is LabelItem => Boolean(item));
 
   const activeItems =
-    sourceMode === 'file'
-      ? fileItems
-      : selectedEquipmentItems.length > 0
-        ? selectedEquipmentItems
-        : equipmentItems.map((item) => equipmentToLabelItem(item));
+    sourceMode === 'file' ? fileItems : selectedEquipmentItems;
 
   useEffect(() => {
     if (sourceMode !== 'database') return;
@@ -226,9 +355,30 @@ export function LabelGeneratorPage() {
       ? (fileItems[fileIndex] ?? null)
       : (activeItems[equipmentPreviewIndex] ?? activeItems[0] ?? null);
 
+  const resetToDefaultSettings = () => {
+    setSourceMode('file');
+    setPrintMode('single');
+    setSize(DEFAULT_LABEL_SIZE);
+    setLimit(20);
+    setSearch('');
+    setStatusId(undefined);
+    setTypeId(undefined);
+    setLocationId(undefined);
+    setSelectedEquipmentIds([]);
+    setSelectedEquipmentMap({});
+    setFileItems([]);
+    setFileIndex(0);
+    setFileName('');
+    setEquipmentPreviewIndex(0);
+    setPage(1);
+    pushToast({
+      title: 'Параметры сброшены к значениям по умолчанию',
+      tone: 'info',
+    });
+  };
+
   const handleFileSelect = async (file: File) => {
     setLoading(true);
-    setError('');
 
     try {
       const items = await parseLabelWorkbook(file);
@@ -249,7 +399,6 @@ export function LabelGeneratorPage() {
         submissionError instanceof Error
           ? submissionError.message
           : 'Ошибка при обработке файла';
-      setError(message);
       pushToast({
         title: 'Не удалось загрузить файл',
         description: message,
@@ -262,14 +411,20 @@ export function LabelGeneratorPage() {
 
   const handleExport = async () => {
     setLoading(true);
-    setError('');
 
     try {
       const itemsToExport =
         sourceMode === 'file' ? fileItems : selectedEquipmentItems;
 
       if (!itemsToExport.length) {
-        throw new Error('Выберите хотя бы одно оборудование в списке.');
+        pushToast({
+          title:
+            sourceMode === 'file'
+              ? 'Загрузите файл с оборудованием'
+              : 'Выберите хотя бы одно оборудование в списке',
+          tone: 'warning',
+        });
+        return;
       }
 
       const exportFileName =
@@ -293,7 +448,6 @@ export function LabelGeneratorPage() {
         submissionError instanceof Error
           ? submissionError.message
           : 'Ошибка при генерации PDF';
-      setError(message);
       pushToast({
         title: 'Не удалось создать PDF',
         description: message,
@@ -379,9 +533,14 @@ export function LabelGeneratorPage() {
           </p>
         </div>
 
-        <Button variant="secondary" onClick={() => setInstructionsOpen(true)}>
-          Инструкция
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="secondary" onClick={resetToDefaultSettings}>
+            Настройки по умолчанию
+          </Button>
+          <Button variant="secondary" onClick={() => setInstructionsOpen(true)}>
+            Инструкция
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -402,23 +561,14 @@ export function LabelGeneratorPage() {
       </Card>
 
       {sourceMode === 'file' ? (
-        <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-          <div className="space-y-6">
+        <div className="grid gap-6 2xl:grid-cols-[minmax(0,1.38fr)_minmax(460px,0.62fr)]">
+          <div className="min-w-0 space-y-6">
             {!fileItems.length ? (
               <Card title="Начните с загрузки">
                 <LabelFileUpload
                   disabled={loading}
                   onFileSelect={handleFileSelect}
                 />
-
-                {error ? (
-                  <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                    <p className="font-semibold text-red-900">
-                      Произошла ошибка
-                    </p>
-                    <p className="mt-1">{error}</p>
-                  </div>
-                ) : null}
               </Card>
             ) : (
               <Card>
@@ -459,7 +609,7 @@ export function LabelGeneratorPage() {
             {fileItems.length ? (
               <Card title="Позиции из файла">
                 <div className="max-h-[420px] overflow-auto rounded-xl border border-gray-200">
-                  <table className="min-w-full text-left text-sm">
+                  <table className="min-w-[720px] text-left text-sm">
                     <thead className="sticky top-0 bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                       <tr>
                         <th className="px-3 py-2">№</th>
@@ -500,8 +650,8 @@ export function LabelGeneratorPage() {
             ) : null}
           </div>
 
-          <div className="space-y-6">
-            <Card className="space-y-4">
+          <div className="min-w-0 space-y-6">
+            <Card className="min-w-0 space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
@@ -530,8 +680,8 @@ export function LabelGeneratorPage() {
               <LabelSettings size={size} onChange={setSize} />
             </Card>
 
-            <Card title="Предпросмотр">
-              <div className="flex min-h-[460px] flex-col items-center justify-center gap-6 rounded-2xl bg-slate-50 p-6">
+            <Card title="Предпросмотр" className="min-w-0">
+              <div className="flex min-h-[460px] min-w-0 flex-col items-center justify-center gap-6 rounded-2xl bg-slate-50 p-6">
                 <LabelPreview item={previewItem} size={size} />
 
                 {previewItem ? (
@@ -605,11 +755,11 @@ export function LabelGeneratorPage() {
           </div>
         </div>
       ) : (
-        <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-          <div className="space-y-6">
+        <div className="grid gap-6 2xl:grid-cols-[minmax(0,1.38fr)_minmax(460px,0.62fr)]">
+          <div className="min-w-0 space-y-6">
             <Card title="Фильтры оборудования">
-              <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
-                <div className="xl:col-span-2">
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div className="lg:col-span-2">
                   <label className="mb-1 block text-sm font-medium text-gray-700">
                     Поиск
                   </label>
@@ -617,81 +767,105 @@ export function LabelGeneratorPage() {
                     value={search}
                     onChange={(event) => setSearch(event.target.value)}
                     placeholder="Инвентарный номер, наименование или серийный номер"
+                    className="max-w-[360px]"
                   />
                 </div>
 
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
-                    Статус
-                  </label>
-                  <Select
-                    value={statusId ?? ''}
-                    onChange={(event) =>
-                      setStatusId(
-                        event.target.value
-                          ? Number(event.target.value)
-                          : undefined,
-                      )
-                    }
-                  >
-                    <option value="">Все статусы</option>
-                    {statusesQuery.data?.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.name}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 lg:col-span-2">
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-gray-700">
+                      Статус
+                    </label>
+                    <Select
+                      value={statusId ?? ''}
+                      onChange={(event) =>
+                        setStatusId(
+                          event.target.value
+                            ? Number(event.target.value)
+                            : undefined,
+                        )
+                      }
+                      className="max-w-[190px]"
+                    >
+                      <option value="">Все статусы</option>
+                      {statusesQuery.data?.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
 
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
-                    Тип
-                  </label>
-                  <Select
-                    value={typeId ?? ''}
-                    onChange={(event) =>
-                      setTypeId(
-                        event.target.value
-                          ? Number(event.target.value)
-                          : undefined,
-                      )
-                    }
-                  >
-                    <option value="">Все типы</option>
-                    {typesQuery.data?.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.name}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-gray-700">
+                      Тип
+                    </label>
+                    <Select
+                      value={typeId ?? ''}
+                      onChange={(event) =>
+                        setTypeId(
+                          event.target.value
+                            ? Number(event.target.value)
+                            : undefined,
+                        )
+                      }
+                      className="max-w-[190px]"
+                    >
+                      <option value="">Все типы</option>
+                      {typesQuery.data?.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
 
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">
-                    Локация
-                  </label>
-                  <Select
-                    value={locationId ?? ''}
-                    onChange={(event) =>
-                      setLocationId(
-                        event.target.value
-                          ? Number(event.target.value)
-                          : undefined,
-                      )
-                    }
-                  >
-                    <option value="">Все локации</option>
-                    {locationsQuery.data?.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.name}
-                      </option>
-                    ))}
-                  </Select>
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-gray-700">
+                      Локация
+                    </label>
+                    <Select
+                      value={locationId ?? ''}
+                      onChange={(event) =>
+                        setLocationId(
+                          event.target.value
+                            ? Number(event.target.value)
+                            : undefined,
+                        )
+                      }
+                      className="max-w-[190px]"
+                    >
+                      <option value="">Все локации</option>
+                      {locationsQuery.data?.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+
+                  <div>
+                    <label className="mb-1 block text-sm font-medium text-gray-700">
+                      На странице
+                    </label>
+                    <Select
+                      value={limit}
+                      onChange={(event) => setLimit(Number(event.target.value))}
+                      className="max-w-[160px]"
+                    >
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                      <option value={200}>200</option>
+                      <option value={500}>500</option>
+                    </Select>
+                  </div>
                 </div>
               </div>
             </Card>
 
-            <Card>
+            <Card className="min-w-0">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
@@ -721,8 +895,8 @@ export function LabelGeneratorPage() {
                 </div>
               </div>
 
-              <div className="overflow-hidden rounded-xl border border-gray-200">
-                <table className="min-w-full text-left text-sm">
+              <div className="overflow-x-auto rounded-xl border border-gray-200">
+                <table className="min-w-[980px] text-left text-sm">
                   <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
                     <tr>
                       <th className="px-3 py-2">Выбор</th>
@@ -819,8 +993,8 @@ export function LabelGeneratorPage() {
             </Card>
           </div>
 
-          <div className="space-y-6">
-            <Card className="space-y-4">
+          <div className="min-w-0 space-y-6">
+            <Card className="min-w-0 space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
@@ -849,8 +1023,8 @@ export function LabelGeneratorPage() {
               <LabelSettings size={size} onChange={setSize} />
             </Card>
 
-            <Card title="Предпросмотр">
-              <div className="flex min-h-[460px] flex-col items-center justify-center gap-6 rounded-2xl bg-slate-50 p-6">
+            <Card title="Предпросмотр" className="min-w-0">
+              <div className="flex min-h-[460px] min-w-0 flex-col items-center justify-center gap-6 rounded-2xl bg-slate-50 p-6">
                 <LabelPreview item={previewItem} size={size} />
 
                 {previewItem ? (
@@ -928,13 +1102,6 @@ export function LabelGeneratorPage() {
           </div>
         </div>
       )}
-
-      {error && sourceMode === 'database' ? (
-        <Card className="border-red-200 bg-red-50">
-          <p className="text-sm font-semibold text-red-900">Произошла ошибка</p>
-          <p className="mt-2 text-sm text-red-700">{error}</p>
-        </Card>
-      ) : null}
 
       {instructionsOpen ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">

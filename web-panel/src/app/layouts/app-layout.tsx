@@ -71,7 +71,7 @@ export function AppLayout() {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <div className="mx-auto grid min-h-screen max-w-[1500px] grid-cols-1 gap-4 p-4 lg:grid-cols-[360px_1fr]">
+      <div className="mx-auto grid min-h-screen max-w-[1800px] grid-cols-1 gap-4 p-4 lg:grid-cols-[360px_1fr]">
         <aside className="rounded-xl border border-gray-200 bg-white p-4">
           <h1 className="mb-1 text-lg font-semibold text-gray-900">
             Inventory Panel
