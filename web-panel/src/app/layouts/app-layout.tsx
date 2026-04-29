@@ -13,16 +13,8 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { to: '/', label: 'Главная', roles: ['ADMIN', 'USER'] },
-  { to: '/change-password', label: 'Смена пароля', roles: ['ADMIN', 'USER'] },
   { to: '/equipment', label: 'Оборудование', roles: ['ADMIN', 'USER'] },
   { to: '/inventories', label: 'Инвентаризации', roles: ['ADMIN', 'USER'] },
-  { to: '/reports', label: 'Отчеты', roles: ['ADMIN', 'USER'] },
-  {
-    to: '/label-generator',
-    label: 'Генератор этикеток',
-    roles: ['ADMIN', 'USER'],
-  },
   { to: '/locations', label: 'Локации', roles: ['ADMIN', 'USER'] },
   {
     to: '/equipment-statuses',
@@ -34,7 +26,14 @@ const navItems: NavItem[] = [
     label: 'Типы оборудования',
     roles: ['ADMIN', 'USER'],
   },
+  { to: '/reports', label: 'Отчеты', roles: ['ADMIN', 'USER'] },
+  {
+    to: '/label-generator',
+    label: 'Генератор этикеток',
+    roles: ['ADMIN', 'USER'],
+  },
   { to: '/users', label: 'Пользователи', roles: ['ADMIN'] },
+  { to: '/change-password', label: 'Смена пароля', roles: ['ADMIN', 'USER'] },
 ];
 
 export function AppLayout() {
