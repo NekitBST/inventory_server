@@ -4,13 +4,29 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    env_file:
-      - .env
     environment:
+      PORT: ${PORT}
       HOST: ${HOST}
-      DB_HOST: ${DB_HOST}
+      DB_HOST: inventory-postgres
       DB_PORT: ${DB_PORT}
-      REDIS_HOST: ${REDIS_HOST}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: inventory-redis
+      REDIS_PORT: ${REDIS_PORT}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      REDIS_DB: ${REDIS_DB}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_ACCESS_EXPIRES_IN: ${JWT_ACCESS_EXPIRES_IN}
+      JWT_REFRESH_EXPIRES_IN: ${JWT_REFRESH_EXPIRES_IN}
+      JWT_REFRESH_TTL_SECONDS: ${JWT_REFRESH_TTL_SECONDS}
+      ADMIN_LOGIN: ${ADMIN_LOGIN}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      CORS_METHODS: ${CORS_METHODS}
+      CORS_ALLOWED_HEADERS: ${CORS_ALLOWED_HEADERS}
+      CORS_CREDENTIALS: ${CORS_CREDENTIALS}
       SWAGGER_ENABLED: ${SWAGGER_ENABLED}
       SWAGGER_SERVER_URL: ${SWAGGER_SERVER_URL}
     restart: unless-stopped
@@ -23,7 +39,7 @@ services:
       context: ./web-panel
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: /api
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL}
     restart: unless-stopped
     networks:
       - inventory-network

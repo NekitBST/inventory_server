@@ -2,7 +2,7 @@ services:
   redis:
     container_name: inventory-redis
     image: redis:latest
-    command: ['redis-server', '--requirepass', '${REDIS_PASSWORD}']
+    command: ['redis-server', '--port', '${REDIS_PORT}', '--requirepass', '${REDIS_PASSWORD}']
     restart: unless-stopped
     volumes:
       - inventory-redis-data:/data
