@@ -1,5 +1,5 @@
 import { hash } from 'argon2';
-import { MigrationInterface, QueryRunner } from 'typeorm';
+import type { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class CreateDefaultAdmin1773577175793 implements MigrationInterface {
   public async up(queryRunner: QueryRunner): Promise<void> {

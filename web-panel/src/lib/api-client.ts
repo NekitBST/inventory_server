@@ -2,8 +2,7 @@ import axios from 'axios';
 import type { AuthTokens } from '../types/auth';
 import { tokenStorage } from './token-storage';
 
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:3000';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 let refreshPromise: Promise<string | null> | null = null;
 

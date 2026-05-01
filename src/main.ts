@@ -6,6 +6,7 @@ import {
   ValidationPipe,
 } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 
 type SafeValidationError = {
@@ -29,22 +30,46 @@ function toSafeValidationErrors(
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const config = app.get(ConfigService);
+
+  const corsOrigins = config
+    .get<string>('cors.origins')!
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  const corsMethods = config
+    .get<string>('cors.methods')!
+    .split(',')
+    .map((method) => method.trim())
+    .filter(Boolean);
+  const corsAllowedHeaders = config
+    .get<string>('cors.allowedHeaders')!
+    .split(',')
+    .map((header) => header.trim())
+    .filter(Boolean);
+  const corsCredentials = config.get<string>('cors.credentials') === 'true';
 
   app.enableCors({
-    origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
-    methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true,
+    origin: corsOrigins,
+    methods: corsMethods,
+    allowedHeaders: corsAllowedHeaders,
+    credentials: corsCredentials,
   });
 
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle('Inventory API')
-    .setDescription('API для системы инвентаризации')
-    .setVersion('1.0.0')
-    .addBearerAuth()
-    .build();
-  const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('swagger', app, swaggerDocument);
+  if (config.get<string>('swagger.enabled') === 'true') {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('Inventory API')
+      .setDescription('API для системы инвентаризации')
+      .setVersion('1.0.0')
+      .addBearerAuth()
+      .build();
+    const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
+    const swaggerServer = config.get<string>('swagger.serverUrl');
+    if (swaggerServer) {
+      swaggerDocument.servers = [{ url: swaggerServer }];
+    }
+    SwaggerModule.setup('swagger', app, swaggerDocument);
+  }
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -61,6 +86,6 @@ async function bootstrap() {
   );
 
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
-  await app.listen(process.env.PORT as string);
+  await app.listen(config.get<number>('port')!, config.get<string>('host')!);
 }
 bootstrap();

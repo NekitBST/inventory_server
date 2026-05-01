@@ -1,0 +1,17 @@
+services:
+  redis:
+    container_name: inventory-redis
+    image: redis:latest
+    command: ['redis-server', '--requirepass', '${REDIS_PASSWORD}']
+    restart: unless-stopped
+    volumes:
+      - inventory-redis-data:/data
+    networks:
+      - inventory-network
+
+volumes:
+  inventory-redis-data:
+
+networks:
+  inventory-network:
+    name: inventory-network

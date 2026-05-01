@@ -1,0 +1,47 @@
+services:
+  api:
+    container_name: inventory-api
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      HOST: ${HOST}
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      REDIS_HOST: ${REDIS_HOST}
+      SWAGGER_ENABLED: ${SWAGGER_ENABLED}
+      SWAGGER_SERVER_URL: ${SWAGGER_SERVER_URL}
+    restart: unless-stopped
+    networks:
+      - inventory-network
+
+  web-panel:
+    container_name: inventory-web-panel
+    build:
+      context: ./web-panel
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: /api
+    restart: unless-stopped
+    networks:
+      - inventory-network
+
+  nginx:
+    container_name: inventory-nginx
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    ports:
+      - '80:80'
+    restart: unless-stopped
+    depends_on:
+      - api
+      - web-panel
+    networks:
+      - inventory-network
+
+networks:
+  inventory-network:
+    name: inventory-network

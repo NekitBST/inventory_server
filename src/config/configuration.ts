@@ -1,5 +1,18 @@
 export default () => ({
+  host: process.env.HOST,
   port: parseInt(process.env.PORT as string, 10),
+
+  cors: {
+    origins: process.env.CORS_ORIGINS,
+    methods: process.env.CORS_METHODS,
+    allowedHeaders: process.env.CORS_ALLOWED_HEADERS,
+    credentials: process.env.CORS_CREDENTIALS,
+  },
+
+  swagger: {
+    enabled: process.env.SWAGGER_ENABLED,
+    serverUrl: process.env.SWAGGER_SERVER_URL,
+  },
 
   database: {
     host: process.env.DB_HOST,
