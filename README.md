@@ -497,3 +497,8 @@ Authorization: Bearer <accessToken>
   "error": "Conflict"
 }
 ```
+
+Миграция в docker prod
+```
+docker compose exec api npm run migrate:up
+```
