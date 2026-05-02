@@ -32,28 +32,48 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const config = app.get(ConfigService);
 
-  const corsOrigins = config
-    .get<string>('cors.origins')!
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
-  const corsMethods = config
-    .get<string>('cors.methods')!
-    .split(',')
-    .map((method) => method.trim())
-    .filter(Boolean);
-  const corsAllowedHeaders = config
-    .get<string>('cors.allowedHeaders')!
-    .split(',')
-    .map((header) => header.trim())
-    .filter(Boolean);
+  const parseCsv = (
+    value: string | undefined,
+    fallback: string[],
+  ): string[] => {
+    if (!value) {
+      return fallback;
+    }
+
+    const normalized = value.trim();
+    if (!normalized) {
+      return fallback;
+    }
+
+    if (normalized === '*') {
+      return ['*'];
+    }
+
+    return normalized
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+  };
+
+  const corsOrigins = parseCsv(config.get<string>('cors.origins'), ['*']);
+  const corsMethods = parseCsv(
+    config.get<string>('cors.methods'),
+    ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+  );
+  const corsAllowedHeaders = parseCsv(
+    config.get<string>('cors.allowedHeaders'),
+    [],
+  );
   const corsCredentials = config.get<string>('cors.credentials') === 'true';
 
   app.enableCors({
-    origin: corsOrigins,
+    origin: corsOrigins.includes('*') ? true : corsOrigins,
     methods: corsMethods,
-    allowedHeaders: corsAllowedHeaders,
-    credentials: corsCredentials,
+    allowedHeaders:
+      corsAllowedHeaders.length > 0 && !corsAllowedHeaders.includes('*')
+        ? corsAllowedHeaders
+        : undefined,
+    credentials: corsOrigins.includes('*') ? false : corsCredentials,
   });
 
   if (config.get<string>('swagger.enabled') === 'true') {
@@ -86,6 +106,7 @@ async function bootstrap() {
   );
 
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
+  app.enableShutdownHooks();
   await app.listen(config.get<number>('port')!, config.get<string>('host')!);
 }
 bootstrap();

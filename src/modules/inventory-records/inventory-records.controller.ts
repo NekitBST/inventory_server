@@ -31,6 +31,8 @@ import { UpdateInventoryRecordDto } from './dto/update-inventory-record.dto';
 import { InventoryRecordResponseDto } from './dto/inventory-record-response.dto';
 import { FindInventoryRecordsQueryDto } from './dto/find-inventory-records-query.dto';
 import { InventoryRecordListResponseDto } from './dto/inventory-record-list-response.dto';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { User } from '../users/entities/user.entity';
 
 @ApiTags('Inventory Records')
 @ApiBearerAuth()
@@ -51,8 +53,8 @@ export class InventoryRecordsController {
   })
   @ApiUnauthorizedResponse({ description: 'Токен невалиден' })
   @Post()
-  create(@Body() dto: CreateInventoryRecordDto) {
-    return this.recordsService.create(dto);
+  create(@CurrentUser() user: User, @Body() dto: CreateInventoryRecordDto) {
+    return this.recordsService.create(dto, user);
   }
 
   @ApiOperation({ summary: 'Список записей по инвентаризации' })
@@ -103,9 +105,10 @@ export class InventoryRecordsController {
   @ApiUnauthorizedResponse({ description: 'Токен невалиден' })
   @Patch(':id')
   update(
+    @CurrentUser() user: User,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateInventoryRecordDto,
   ) {
-    return this.recordsService.update(id, dto);
+    return this.recordsService.update(id, dto, user);
   }
 }

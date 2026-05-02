@@ -10,6 +10,7 @@ import { EquipmentTypesModule } from './modules/equipment-types/equipment-types.
 import { InventoryRecordsModule } from './modules/inventory-records/inventory-records.module';
 import { InventoriesModule } from './modules/inventories/inventories.module';
 import { LocationsModule } from './modules/locations/locations.module';
+import { DiscoveryModule } from './modules/discovery/discovery.module';
 import { ReportsModule } from './modules/reports/reports.module';
 
 @Module({
@@ -27,6 +28,7 @@ import { ReportsModule } from './modules/reports/reports.module';
     InventoryRecordsModule,
     InventoriesModule,
     LocationsModule,
+    DiscoveryModule,
     ReportsModule,
   ],
 })

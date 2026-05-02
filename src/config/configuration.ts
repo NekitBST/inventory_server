@@ -14,6 +14,14 @@ export default () => ({
     serverUrl: process.env.SWAGGER_SERVER_URL,
   },
 
+  discovery: {
+    enabled: process.env.DISCOVERY_ENABLED !== 'false',
+    serviceName: process.env.DISCOVERY_SERVICE_NAME,
+    serviceType: process.env.DISCOVERY_SERVICE_TYPE,
+    servicePath: process.env.DISCOVERY_SERVICE_PATH,
+    publicBaseUrl: process.env.DISCOVERY_PUBLIC_BASE_URL,
+  },
+
   database: {
     host: process.env.DB_HOST,
     port: parseInt(process.env.DB_PORT as string, 10),

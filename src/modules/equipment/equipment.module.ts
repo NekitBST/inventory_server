@@ -8,6 +8,7 @@ import { EquipmentStatus } from '../equipment-statuses/entities/equipment-status
 import { EquipmentType } from '../equipment-types/entities/equipment-type.entity';
 import { Inventory } from '../inventories/entities/inventory.entity';
 import { InventoryRecord } from '../inventory-records/entities/inventory-record.entity';
+import { EquipmentAuditEvent } from './entities/equipment-audit-event.entity';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { InventoryRecord } from '../inventory-records/entities/inventory-record.
       EquipmentType,
       Inventory,
       InventoryRecord,
+      EquipmentAuditEvent,
     ]),
   ],
   providers: [EquipmentService],
