@@ -44,7 +44,7 @@ export function EquipmentAuditModal({
       onClose={onClose}
       title={`История изменений: ${inventoryNumber} — ${equipmentName}`}
     >
-      <div className="max-h-96 overflow-y-auto">
+      <div className="-mx-4 max-h-100 overflow-y-auto px-6 py-5">
         {timelineQuery.isLoading ? (
           <div className="text-center py-8 text-gray-500">Загрузка...</div>
         ) : events.length === 0 ? (
@@ -90,7 +90,7 @@ function TimelineEvent({
   return (
     <div className="relative pl-8 pb-4">
       <div
-        className={`absolute left-0 top-1 w-4 ${isLast ? 'h-29 sm:h-21' : 'h-4'} rounded-full bg-white z-10`}
+        className={`absolute left-0 top-1 w-4 ${isLast ? 'h-34 sm:h-24' : 'h-4'} rounded-full bg-white z-10`}
       />
 
       <div
@@ -104,36 +104,36 @@ function TimelineEvent({
       <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <p className="text-sm font-semibold text-gray-900">
+            <p className="text-base font-semibold text-gray-900">
               {actionLabels[event.action] || event.action}
             </p>
-            <p className="text-xs text-gray-600 mt-0.5">{event.summary}</p>
+            <p className="mt-0.5 text-sm text-gray-600">{event.summary}</p>
           </div>
-          <p className="text-xs text-gray-500 whitespace-nowrap">
+          <p className="text-sm text-gray-500 whitespace-nowrap">
             {formattedDate}
           </p>
         </div>
 
         {event.actorName && (
-          <p className="text-xs text-gray-500 mt-2">
+          <p className="mt-2 text-sm text-gray-500">
             <span className="font-medium">Пользователь:</span> {event.actorName}
           </p>
         )}
 
         {event.reason && (
-          <p className="text-xs text-gray-700 mt-2">
+          <p className="mt-2 text-sm text-gray-700">
             <span className="font-medium">Причина:</span> {event.reason}
           </p>
         )}
 
         {event.details && (
-          <p className="text-xs text-gray-700 mt-2 whitespace-pre-wrap">
+          <p className="mt-2 text-sm text-gray-700 whitespace-pre-wrap">
             <span className="font-medium">Подробно:</span> {event.details}
           </p>
         )}
 
         {event.fromState && event.toState && (
-          <div className="text-xs mt-2 space-y-1">
+          <div className="mt-2 space-y-1 text-sm">
             <p className="font-medium text-gray-700">Изменения:</p>
             <div className="bg-white rounded p-2 border border-gray-200">
               <StateChanges from={event.fromState} to={event.toState} />

@@ -453,72 +453,97 @@ function ReportHistoryModal({
   if (!isOpen) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/35 p-4">
-      <section className="w-full max-w-3xl rounded-xl border border-slate-200 bg-white p-4 shadow-lg">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <h3 className="text-base font-semibold text-slate-900">
-              История отчетов
-            </h3>
-            <p className="text-sm text-slate-500">
-              Нажмите на запись, чтобы восстановить параметры отчета.
-            </p>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/35 p-4"
+      onClick={onClose}
+    >
+      <section
+        className="w-full max-w-3xl overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="border-b border-slate-200 p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-base font-semibold text-slate-900">
+                История отчетов
+              </h3>
+              <p className="text-sm text-slate-500">
+                Нажмите на запись, чтобы восстановить параметры отчета.
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="text-slate-400 hover:text-slate-600 transition-colors"
+            >
+              <svg
+                className="h-6 w-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
           </div>
-          <Button variant="secondary" onClick={onClose}>
-            Закрыть
-          </Button>
         </div>
 
-        <div className="mt-4 max-h-[60vh] overflow-auto rounded-lg border border-slate-200">
-          {isLoading ? (
-            <div className="px-4 py-6 text-center text-sm text-slate-500">
-              Загружаем историю...
-            </div>
-          ) : items.length ? (
-            <div className="divide-y divide-slate-100">
-              {items.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between gap-3 px-4 py-3"
-                >
-                  <button
-                    type="button"
-                    className="min-w-0 flex-1 text-left"
-                    onClick={() => onApply(item)}
+        <div className="max-h-[70vh] overflow-y-auto p-4 pr-2">
+          <div className="rounded-lg border border-slate-200">
+            {isLoading ? (
+              <div className="px-4 py-6 text-center text-sm text-slate-500">
+                Загружаем историю...
+              </div>
+            ) : items.length ? (
+              <div className="divide-y divide-slate-100">
+                {items.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between gap-3 px-4 py-3"
                   >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="truncate text-sm font-medium text-slate-900">
-                        {toHistoryTitleLabel(item.title)}
-                      </span>
-                      {item.isPinned ? (
-                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
-                          Закреплено
-                        </span>
-                      ) : null}
-                    </div>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {toHistoryMetaLabel(item)}
-                    </p>
-                  </button>
-
-                  <div className="flex shrink-0 gap-2">
-                    <Button
-                      variant="secondary"
-                      onClick={() => onTogglePin(item)}
-                      disabled={isPinning}
+                    <button
+                      type="button"
+                      className="min-w-0 flex-1 text-left"
+                      onClick={() => onApply(item)}
                     >
-                      {item.isPinned ? 'Открепить' : 'Закрепить'}
-                    </Button>
-                    <Button onClick={() => onApply(item)}>Применить</Button>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="truncate text-sm font-medium text-slate-900">
+                          {toHistoryTitleLabel(item.title)}
+                        </span>
+                        {item.isPinned ? (
+                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800">
+                            Закреплено
+                          </span>
+                        ) : null}
+                      </div>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {toHistoryMetaLabel(item)}
+                      </p>
+                    </button>
+
+                    <div className="flex shrink-0 gap-2">
+                      <Button
+                        variant="secondary"
+                        onClick={() => onTogglePin(item)}
+                        disabled={isPinning}
+                      >
+                        {item.isPinned ? 'Открепить' : 'Закрепить'}
+                      </Button>
+                      <Button onClick={() => onApply(item)}>Применить</Button>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="px-4 py-6 text-center text-sm text-slate-500">
-              История пока пуста.
-            </div>
-          )}
+                ))}
+              </div>
+            ) : (
+              <div className="px-4 py-6 text-center text-sm text-slate-500">
+                История пока пуста.
+              </div>
+            )}
+          </div>
         </div>
       </section>
     </div>,
