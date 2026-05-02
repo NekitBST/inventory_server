@@ -91,3 +91,28 @@ export type ReportHistoryItem = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type EquipmentAuditAction =
+  | 'CREATED'
+  | 'UPDATED'
+  | 'STATUS_CHANGED'
+  | 'LOCATION_CHANGED'
+  | 'TYPE_CHANGED'
+  | 'INVENTORY_SCANNED'
+  | 'INVENTORY_RECORD_UPDATED'
+  | 'DELETED';
+
+export type EquipmentAuditEvent = {
+  id: string;
+  equipmentId: string;
+  actorUserId: string | null;
+  actorName: string | null;
+  action: EquipmentAuditAction;
+  summary: string;
+  details: string | null;
+  reason: string | null;
+  fromState: Record<string, unknown> | null;
+  toState: Record<string, unknown> | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+};

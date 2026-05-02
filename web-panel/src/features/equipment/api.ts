@@ -1,6 +1,10 @@
 import { apiClient } from '../../lib/api-client';
 import type { PaginatedResponse } from '../../types/common';
-import type { Equipment, EquipmentPayload } from '../../types/entities';
+import type {
+  Equipment,
+  EquipmentPayload,
+  EquipmentAuditEvent,
+} from '../../types/entities';
 
 export type EquipmentQuery = {
   page: number;
@@ -52,5 +56,12 @@ export const equipmentApi = {
       responseType: 'blob',
     });
     return response;
+  },
+
+  async getTimeline(id: string) {
+    const { data } = await apiClient.get<EquipmentAuditEvent[]>(
+      `/equipment/${id}/timeline`,
+    );
+    return data;
   },
 };

@@ -23,7 +23,7 @@ function formatInventoryRecordValue(
   }
 
   if (key === 'resultStatus') {
-    return value === 'FOUND' ? 'Найдено' : value === 'DAMAGED' ? 'Повреждено' : value;
+    return value === 'FOUND' ? 'Найдено' : value === 'DAMAGED' ? 'Найдено с повреждениями' : value;
   }
 
   return value;

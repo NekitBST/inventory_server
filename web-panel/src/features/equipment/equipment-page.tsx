@@ -8,6 +8,7 @@ import { Pagination } from '../../components/ui/Pagination';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { useToast } from '../../app/toast-provider';
 import { equipmentApi } from './api';
+import { EquipmentAuditModal } from './EquipmentAuditModal';
 import { referencesApi } from '../references/api';
 import { getApiErrorMessage } from '../../lib/api-error';
 import { readPageLimit, savePageLimit } from '../../lib/page-limit-storage';
@@ -48,6 +49,12 @@ export function EquipmentPage() {
     null,
   );
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [auditModalEquipmentId, setAuditModalEquipmentId] = useState<
+    string | null
+  >(null);
+  const [auditModalEquipmentName, setAuditModalEquipmentName] = useState('');
+  const [auditModalInventoryNumber, setAuditModalInventoryNumber] =
+    useState('');
   const [formError, setFormError] = useState('');
 
   const filters = useMemo(
@@ -162,6 +169,18 @@ export function EquipmentPage() {
     setEditingEquipmentId(null);
     setForm(initialFormState);
     setFormError('');
+  };
+
+  const handleOpenAudit = (item: Equipment) => {
+    setAuditModalEquipmentId(item.id);
+    setAuditModalEquipmentName(item.name);
+    setAuditModalInventoryNumber(item.inventoryNumber);
+  };
+
+  const handleCloseAudit = () => {
+    setAuditModalEquipmentId(null);
+    setAuditModalEquipmentName('');
+    setAuditModalInventoryNumber('');
   };
 
   const handleSubmitForm = async () => {
@@ -387,12 +406,17 @@ export function EquipmentPage() {
               <th className="px-3 py-2">Статус</th>
               <th className="px-3 py-2">Тип</th>
               <th className="px-3 py-2">Локация</th>
+              <th className="px-3 py-2">Обновлено</th>
               <th className="px-3 py-2">Действия</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 bg-white">
             {equipmentQuery.data?.items.map((item) => (
-              <tr key={item.id}>
+              <tr
+                key={item.id}
+                className="cursor-pointer hover:bg-gray-50"
+                onClick={() => handleOpenAudit(item)}
+              >
                 <td className="px-3 py-2">{item.inventoryNumber}</td>
                 <td className="px-3 py-2">{item.name}</td>
                 <td className="px-3 py-2">{item.serialNumber ?? '-'}</td>
@@ -400,6 +424,9 @@ export function EquipmentPage() {
                 <td className="px-3 py-2">{item.type?.name ?? '-'}</td>
                 <td className="px-3 py-2">{item.location?.name ?? '-'}</td>
                 <td className="px-3 py-2">
+                  {new Date(item.updatedAt).toLocaleString('ru-RU')}
+                </td>
+                <td className="px-3 py-2" onClick={(e) => e.stopPropagation()}>
                   <div className="flex gap-2">
                     <Button
                       variant="secondary"
@@ -421,7 +448,7 @@ export function EquipmentPage() {
             ))}
             {!equipmentQuery.isLoading && !equipmentQuery.data?.items.length ? (
               <tr>
-                <td colSpan={7} className="px-3 py-3 text-center text-gray-500">
+                <td colSpan={8} className="px-3 py-3 text-center text-gray-500">
                   Ничего не найдено
                 </td>
               </tr>
@@ -451,6 +478,14 @@ export function EquipmentPage() {
           if (!pendingDeleteId) return;
           removeMutation.mutate(pendingDeleteId);
         }}
+      />
+
+      <EquipmentAuditModal
+        isOpen={Boolean(auditModalEquipmentId)}
+        equipmentId={auditModalEquipmentId}
+        equipmentName={auditModalEquipmentName}
+        inventoryNumber={auditModalInventoryNumber}
+        onClose={handleCloseAudit}
       />
     </Card>
   );
