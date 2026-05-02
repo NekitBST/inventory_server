@@ -123,6 +123,7 @@ Swagger:
 | DELETE | /users/:id                                   | Деактивировать пользователя (ADMIN)       | Да                     |
 | GET    | /equipment                                   | Список оборудования (фильтры + пагинация) | Да                     |
 | GET    | /equipment/:id                               | Оборудование по UUID                      | Да                     |
+| GET    | /equipment/:id/timeline                      | Таймлайн изменений оборудования           | Да                     |
 | GET    | /equipment/by-inventory/:inventoryNumber     | Оборудование по инвентарному номеру       | Да                     |
 | POST   | /equipment                                   | Создать оборудование                      | Да                     |
 | PATCH  | /equipment/:id                               | Обновить оборудование                     | Да                     |
@@ -189,6 +190,37 @@ Authorization: Bearer <accessToken>
   "page": 1,
   "limit": 20
 }
+```
+
+## Аудит действий по оборудованию
+
+Сервер ведет таймлайн действий по каждой единице оборудования (создание, изменение полей, смена статуса/локации, сканирование в инвентаризации, удаление).
+
+Эндпоинт:
+
+```http
+GET /equipment/:id/timeline
+Authorization: Bearer <accessToken>
+```
+
+Пример ответа:
+
+```json
+[
+  {
+    "id": "d8a8571b-c662-4fbe-bcb9-3b72f8de68e7",
+    "equipmentId": "10a5f06f-c4d8-4f42-9f35-97bc5b1f68aa",
+    "actorUserId": "e7d9d8d8-30cb-4f58-b11c-4939587f715d",
+    "actorName": "Иван Петров",
+    "action": "STATUS_CHANGED",
+    "summary": "Изменён статус оборудования",
+    "reason": "Передано в сервис",
+    "fromState": { "status": "в работе" },
+    "toState": { "status": "в ремонте" },
+    "metadata": null,
+    "createdAt": "2026-05-02T10:15:00.000Z"
+  }
+]
 ```
 
 ## Примеры запросов и ответов

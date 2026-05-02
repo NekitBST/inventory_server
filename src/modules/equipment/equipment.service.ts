@@ -14,6 +14,11 @@ import { EquipmentStatus } from '../equipment-statuses/entities/equipment-status
 import { EquipmentType } from '../equipment-types/entities/equipment-type.entity';
 import { Inventory } from '../inventories/entities/inventory.entity';
 import { InventoryRecord } from '../inventory-records/entities/inventory-record.entity';
+import {
+  EquipmentAuditAction,
+  EquipmentAuditEvent,
+} from './entities/equipment-audit-event.entity';
+import { User } from '../users/entities/user.entity';
 
 @Injectable()
 export class EquipmentService {
@@ -30,6 +35,8 @@ export class EquipmentService {
     private readonly inventoriesRepo: Repository<Inventory>,
     @InjectRepository(InventoryRecord)
     private readonly inventoryRecordsRepo: Repository<InventoryRecord>,
+    @InjectRepository(EquipmentAuditEvent)
+    private readonly auditEventsRepo: Repository<EquipmentAuditEvent>,
   ) {}
 
   async findAll(params: FindEquipmentQueryDto) {
@@ -108,7 +115,7 @@ export class EquipmentService {
     return equipment;
   }
 
-  async create(dto: CreateEquipmentDto): Promise<Equipment> {
+  async create(dto: CreateEquipmentDto, user: User): Promise<Equipment> {
     await this.ensureInventoryNumberUnique(dto.inventoryNumber);
     if (dto.serialNumber) {
       await this.ensureSerialNumberUnique(dto.serialNumber);
@@ -125,20 +132,45 @@ export class EquipmentService {
       typeId: dto.typeId,
     });
 
-    return this.saveWithUniqueConstraintHandling(equipment);
+    const createdEquipment = await this.saveWithUniqueConstraintHandling(equipment);
+
+    await this.logAuditEvent({
+      equipmentId: createdEquipment.id,
+      action: 'CREATED',
+      summary: 'Оборудование добавлено в базу',
+      actor: user,
+      toState: {
+        inventoryNumber: createdEquipment.inventoryNumber,
+        name: createdEquipment.name,
+        serialNumber: createdEquipment.serialNumber,
+        statusId: createdEquipment.statusId,
+        typeId: createdEquipment.typeId,
+        locationId: createdEquipment.locationId,
+      },
+    });
+
+    return createdEquipment;
   }
 
-  async update(id: string, dto: UpdateEquipmentDto): Promise<Equipment> {
+  async update(id: string, dto: UpdateEquipmentDto, user: User): Promise<Equipment> {
     const equipment = await this.equipmentRepo.findOne({
       where: { id, deletedAt: IsNull() },
+      relations: ['status', 'type', 'location'],
     });
     if (!equipment) throw new NotFoundException('Оборудование не найдено');
+
+    const fromState: Record<string, unknown> = {};
+    const toState: Record<string, unknown> = {};
+    let auditAction: EquipmentAuditAction = 'UPDATED';
+    let auditSummary = 'Обновлены данные оборудования';
 
     if (
       dto.inventoryNumber !== undefined &&
       dto.inventoryNumber !== equipment.inventoryNumber
     ) {
       await this.ensureInventoryNumberUnique(dto.inventoryNumber);
+      fromState.inventoryNumber = equipment.inventoryNumber;
+      toState.inventoryNumber = dto.inventoryNumber;
       equipment.inventoryNumber = dto.inventoryNumber;
     }
 
@@ -146,6 +178,10 @@ export class EquipmentService {
     let locationAtEventTime: string | null | undefined;
 
     if (dto.name !== undefined) {
+      if (dto.name !== equipment.name) {
+        fromState.name = equipment.name;
+        toState.name = dto.name;
+      }
       equipment.name = dto.name;
     }
 
@@ -154,6 +190,8 @@ export class EquipmentService {
       dto.serialNumber !== equipment.serialNumber
     ) {
       await this.ensureSerialNumberUnique(dto.serialNumber);
+      fromState.serialNumber = equipment.serialNumber;
+      toState.serialNumber = dto.serialNumber;
       equipment.serialNumber = dto.serialNumber;
     }
 
@@ -162,22 +200,36 @@ export class EquipmentService {
         where: { id: dto.statusId },
       });
       if (!status) throw new NotFoundException('Статус оборудования не найден');
+      fromState.status = equipment.status?.name ?? null;
+      toState.status = status.name;
       equipment.statusId = dto.statusId;
+      equipment.status = status;
       statusAtEventTime = status.name;
+      auditAction = 'STATUS_CHANGED';
+      auditSummary = 'Изменён статус оборудования';
     }
 
     if (dto.typeId !== undefined && dto.typeId !== equipment.typeId) {
       const type = await this.typesRepo.findOne({ where: { id: dto.typeId } });
       if (!type) throw new NotFoundException('Тип оборудования не найден');
+      fromState.type = equipment.type?.name ?? null;
+      toState.type = type.name;
       equipment.typeId = dto.typeId;
+      equipment.type = type;
+      if (auditAction !== 'STATUS_CHANGED') {
+        auditAction = 'TYPE_CHANGED';
+        auditSummary = 'Изменён тип оборудования';
+      }
     }
 
     if (
       dto.locationId !== undefined &&
       dto.locationId !== equipment.locationId
     ) {
+      fromState.location = equipment.location?.name ?? null;
       if (dto.locationId === null) {
         equipment.locationId = null;
+        toState.location = null;
         locationAtEventTime = null;
       } else {
         const location = await this.locationsRepo.findOne({
@@ -185,7 +237,14 @@ export class EquipmentService {
         });
         if (!location) throw new NotFoundException('Локация не найдена');
         equipment.locationId = dto.locationId;
+        equipment.location = location;
+        toState.location = location.name;
         locationAtEventTime = location.name;
+      }
+
+      if (auditAction !== 'STATUS_CHANGED') {
+        auditAction = 'LOCATION_CHANGED';
+        auditSummary = 'Изменено расположение оборудования';
       }
     }
 
@@ -198,6 +257,20 @@ export class EquipmentService {
         statusAtEventTime,
         locationAtEventTime,
       );
+    }
+
+    if (Object.keys(toState).length > 0) {
+      const details = this.buildAuditDetails(fromState, toState);
+      await this.logAuditEvent({
+        equipmentId: equipment.id,
+        action: auditAction,
+        summary: auditSummary,
+        actor: user,
+        reason: dto.changeReason ?? null,
+        fromState,
+        toState,
+        details,
+      });
     }
 
     return updatedEquipment;
@@ -237,7 +310,7 @@ export class EquipmentService {
       .execute();
   }
 
-  async remove(id: string): Promise<void> {
+  async remove(id: string, user: User): Promise<void> {
     const equipment = await this.equipmentRepo.findOne({
       where: { id, deletedAt: IsNull() },
     });
@@ -246,7 +319,94 @@ export class EquipmentService {
       throw new NotFoundException('Оборудование не найдено');
     }
 
+    await this.logAuditEvent({
+      equipmentId: equipment.id,
+      action: 'DELETED',
+      summary: 'Оборудование удалено из активного списка',
+      actor: user,
+      fromState: {
+        inventoryNumber: equipment.inventoryNumber,
+        name: equipment.name,
+      },
+    });
+
     await this.equipmentRepo.softDelete(id);
+  }
+
+  async getTimeline(id: string): Promise<EquipmentAuditEvent[]> {
+    const equipment = await this.equipmentRepo.findOne({
+      where: { id, deletedAt: IsNull() },
+      select: ['id'],
+    });
+
+    if (!equipment) {
+      throw new NotFoundException('Оборудование не найдено');
+    }
+
+    return this.auditEventsRepo.find({
+      where: { equipmentId: id },
+      order: { createdAt: 'DESC' },
+      take: 200,
+    });
+  }
+
+  private buildAuditDetails(
+    fromState: Record<string, unknown>,
+    toState: Record<string, unknown>,
+  ): string | null {
+    const changes: string[] = [];
+
+    const fieldLabels: Record<string, string> = {
+      status: 'статус',
+      statusId: 'статус',
+      name: 'название',
+      serialNumber: 'серийный номер',
+      type: 'тип оборудования',
+      typeId: 'тип оборудования',
+      location: 'расположение',
+      locationId: 'расположение',
+      inventoryNumber: 'инвентарный номер',
+    };
+
+    for (const key of Object.keys(toState)) {
+      const from = fromState[key];
+      const to = toState[key];
+      if (from !== to) {
+        const label = fieldLabels[key] || key;
+        const fromVal = from === null ? 'пусто' : String(from);
+        const toVal = to === null ? 'пусто' : String(to);
+        changes.push(`${label}: ${fromVal} → ${toVal}`);
+      }
+    }
+
+    return changes.length ? `Изменены поля: ${changes.join(', ')}` : null;
+  }
+
+  private async logAuditEvent(params: {
+    equipmentId: string;
+    action: EquipmentAuditAction;
+    summary: string;
+    actor?: User;
+    reason?: string | null;
+    details?: string | null;
+    fromState?: Record<string, unknown> | null;
+    toState?: Record<string, unknown> | null;
+    metadata?: Record<string, unknown> | null;
+  }): Promise<void> {
+    const event = this.auditEventsRepo.create({
+      equipmentId: params.equipmentId,
+      action: params.action,
+      summary: params.summary,
+      actorUserId: params.actor?.id ?? null,
+      actorName: params.actor?.fullName ?? params.actor?.email ?? null,
+      reason: params.reason ?? null,
+      details: params.details ?? null,
+      fromState: params.fromState ?? null,
+      toState: params.toState ?? null,
+      metadata: params.metadata ?? null,
+    });
+
+    await this.auditEventsRepo.save(event);
   }
 
   private async ensureReferencesExist(

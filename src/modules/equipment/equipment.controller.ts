@@ -36,6 +36,9 @@ import { Roles } from '../../common/constants/roles';
 import { EquipmentListResponseDto } from './dto/equipment-list-response.dto';
 import { EquipmentWithRelationsResponseDto } from './dto/equipment-with-relations-response.dto';
 import { EquipmentFlatResponseDto } from './dto/equipment-flat-response.dto';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { User } from '../users/entities/user.entity';
+import { EquipmentAuditEvent } from './entities/equipment-audit-event.entity';
 
 @ApiTags('Equipment')
 @ApiBearerAuth()
@@ -82,6 +85,19 @@ export class EquipmentController {
     return this.equipmentService.findByInventoryNumber(inventoryNumber);
   }
 
+  @ApiOperation({ summary: 'Таймлайн изменений оборудования' })
+  @ApiParam({
+    name: 'id',
+    example: '10a5f06f-c4d8-4f42-9f35-97bc5b1f68aa',
+    description: 'UUID оборудования',
+  })
+  @ApiOkResponse({ type: EquipmentAuditEvent, isArray: true })
+  @ApiNotFoundResponse({ description: 'Оборудование не найдено' })
+  @Get(':id/timeline')
+  timeline(@Param('id', ParseUUIDPipe) id: string) {
+    return this.equipmentService.getTimeline(id);
+  }
+
   @ApiOperation({ summary: 'Оборудование по UUID' })
   @ApiParam({
     name: 'id',
@@ -101,8 +117,8 @@ export class EquipmentController {
   @ApiUnauthorizedResponse({ description: 'Токен невалиден' })
   @ApiConflictResponse({ description: 'Оборудование с таким инвентарным или серийным номером уже существует' })
   @Post()
-  create(@Body() dto: CreateEquipmentDto) {
-    return this.equipmentService.create(dto);
+  create(@CurrentUser() user: User, @Body() dto: CreateEquipmentDto) {
+    return this.equipmentService.create(dto, user);
   }
 
   @ApiOperation({ summary: 'Обновить оборудование' })
@@ -117,10 +133,11 @@ export class EquipmentController {
   @ApiConflictResponse({ description: 'Оборудование с таким инвентарным или серийным номером уже существует' })
   @Patch(':id')
   update(
+    @CurrentUser() user: User,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateEquipmentDto,
   ) {
-    return this.equipmentService.update(id, dto);
+    return this.equipmentService.update(id, dto, user);
   }
 
   @ApiOperation({ summary: 'Удалить оборудование' })
@@ -134,7 +151,7 @@ export class EquipmentController {
   @ApiNotFoundResponse({ description: 'Оборудование не найдено' })
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.equipmentService.remove(id);
+  remove(@CurrentUser() user: User, @Param('id', ParseUUIDPipe) id: string) {
+    return this.equipmentService.remove(id, user);
   }
 }

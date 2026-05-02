@@ -11,6 +11,46 @@ import { UpdateInventoryRecordDto } from './dto/update-inventory-record.dto';
 import { Inventory } from '../inventories/entities/inventory.entity';
 import { Equipment } from '../equipment/entities/equipment.entity';
 import { FindInventoryRecordsQueryDto } from './dto/find-inventory-records-query.dto';
+import { EquipmentAuditEvent } from '../equipment/entities/equipment-audit-event.entity';
+import { User } from '../users/entities/user.entity';
+
+function formatInventoryRecordValue(
+  key: 'resultStatus' | 'comment',
+  value: string | null,
+): string {
+  if (value === null || value === undefined || value === '') {
+    return key === 'resultStatus' ? 'не указан' : 'пусто';
+  }
+
+  if (key === 'resultStatus') {
+    return value === 'FOUND' ? 'Найдено' : value === 'DAMAGED' ? 'Повреждено' : value;
+  }
+
+  return value;
+}
+
+function buildInventoryRecordChangeDetails(params: {
+  fromState: { resultStatus: string; comment: string | null };
+  toState: { resultStatus: string; comment: string | null };
+}): string {
+  const changes: string[] = [];
+
+  if (params.fromState.resultStatus !== params.toState.resultStatus) {
+    changes.push(
+      `статус результата: ${formatInventoryRecordValue('resultStatus', params.fromState.resultStatus)} → ${formatInventoryRecordValue('resultStatus', params.toState.resultStatus)}`,
+    );
+  }
+
+  if (params.fromState.comment !== params.toState.comment) {
+    changes.push(
+      `комментарий: ${formatInventoryRecordValue('comment', params.fromState.comment)} → ${formatInventoryRecordValue('comment', params.toState.comment)}`,
+    );
+  }
+
+  return changes.length > 0
+    ? `Изменены поля записи: ${changes.join('; ')}`
+    : 'Поля записи не изменились';
+}
 
 @Injectable()
 export class InventoryRecordsService {
@@ -21,9 +61,11 @@ export class InventoryRecordsService {
     private readonly inventoriesRepo: Repository<Inventory>,
     @InjectRepository(Equipment)
     private readonly equipmentRepo: Repository<Equipment>,
+    @InjectRepository(EquipmentAuditEvent)
+    private readonly auditEventsRepo: Repository<EquipmentAuditEvent>,
   ) {}
 
-  async create(dto: CreateInventoryRecordDto): Promise<InventoryRecord> {
+  async create(dto: CreateInventoryRecordDto, user: User): Promise<InventoryRecord> {
     const inventory = await this.inventoriesRepo.findOne({
       where: { id: dto.inventoryId },
     });
@@ -50,7 +92,29 @@ export class InventoryRecordsService {
     });
 
     try {
-      return await this.recordsRepo.save(record);
+      const created = await this.recordsRepo.save(record);
+
+      await this.auditEventsRepo.save(
+        this.auditEventsRepo.create({
+          equipmentId: equipment.id,
+          actorUserId: user.id,
+          actorName: user.fullName ?? user.email,
+          action: 'INVENTORY_SCANNED',
+          summary: 'Оборудование зафиксировано в инвентаризации',
+          reason: dto.comment ?? null,
+          toState: {
+            resultStatus: created.resultStatus,
+            statusAtEventTime: created.statusAtEventTime,
+            locationAtEventTime: created.locationAtEventTime,
+          },
+          metadata: {
+            inventoryId: created.inventoryId,
+            inventoryRecordId: created.id,
+          },
+        }),
+      );
+
+      return created;
     } catch (error) {
       if (
         error instanceof QueryFailedError &&
@@ -144,6 +208,7 @@ export class InventoryRecordsService {
   async update(
     id: string,
     dto: UpdateInventoryRecordDto,
+    user: User,
   ): Promise<InventoryRecord> {
     const record = await this.recordsRepo.findOne({ where: { id } });
     if (!record)
@@ -159,6 +224,11 @@ export class InventoryRecordsService {
       );
     }
 
+    const fromState = {
+      resultStatus: record.resultStatus,
+      comment: record.comment,
+    };
+
     if (dto.comment !== undefined) {
       record.comment = dto.comment;
     }
@@ -166,6 +236,39 @@ export class InventoryRecordsService {
       record.resultStatus = dto.resultStatus;
     }
 
-    return this.recordsRepo.save(record);
+    const updated = await this.recordsRepo.save(record);
+
+    const toState = {
+      resultStatus: updated.resultStatus,
+      comment: updated.comment,
+    };
+
+    if (
+      fromState.resultStatus !== toState.resultStatus ||
+      fromState.comment !== toState.comment
+    ) {
+      await this.auditEventsRepo.save(
+        this.auditEventsRepo.create({
+          equipmentId: updated.equipmentId,
+          actorUserId: user.id,
+          actorName: user.fullName ?? user.email,
+          action: 'INVENTORY_RECORD_UPDATED',
+          summary: 'Обновлена запись инвентаризации',
+          details: buildInventoryRecordChangeDetails({
+            fromState,
+            toState,
+          }),
+          reason: dto.comment ?? null,
+          fromState,
+          toState,
+          metadata: {
+            inventoryId: updated.inventoryId,
+            inventoryRecordId: updated.id,
+          },
+        }),
+      );
+    }
+
+    return updated;
   }
 }

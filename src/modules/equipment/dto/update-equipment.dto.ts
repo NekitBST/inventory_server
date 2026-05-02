@@ -63,4 +63,16 @@ export class UpdateEquipmentDto {
   @IsOptional()
   @IsInt()
   typeId?: number;
+
+  @ApiPropertyOptional({
+    example: 'Перемещение в новый кабинет после переезда отдела',
+    description: 'Причина изменения (для аудита)',
+    maxLength: 500,
+  })
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(500)
+  changeReason?: string;
 }
