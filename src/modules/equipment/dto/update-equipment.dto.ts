@@ -43,7 +43,7 @@ export class UpdateEquipmentDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(100)
-  serialNumber?: string;
+  serialNumber?: string | null;
 
   @ApiPropertyOptional({
     example: 2,

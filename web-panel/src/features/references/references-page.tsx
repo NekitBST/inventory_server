@@ -274,7 +274,7 @@ export function ReferencesPage({ module, title }: ReferencesPageProps) {
       <ConfirmDialog
         isOpen={pendingDeleteId !== null}
         title="Удалить запись справочника?"
-        description="Удалённое значение может использоваться в старых сущностях, проверьте связи."
+        description="Запись cправочника будет удалена и исчезнет из списка."
         confirmText="Удалить"
         tone="danger"
         isProcessing={removeMutation.isPending}

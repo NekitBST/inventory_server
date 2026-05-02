@@ -220,6 +220,14 @@ export function InventoriesPage() {
                 </td>
               </tr>
             ))}
+            {!inventoriesQuery.isLoading &&
+            !inventoriesQuery.data?.items.length ? (
+              <tr>
+                <td colSpan={6} className="px-3 py-3 text-center text-gray-500">
+                  Ничего не найдено
+                </td>
+              </tr>
+            ) : null}
           </tbody>
         </table>
       </div>

@@ -340,6 +340,16 @@ export function LabelGeneratorPage() {
     .map((id) => selectedEquipmentMap[id])
     .filter((item): item is LabelItem => Boolean(item));
 
+  useEffect(() => {
+    if (sourceMode !== 'database') return;
+    if (!equipmentQuery.data) return;
+    if (equipmentQuery.data.total !== 0) return;
+
+    setSelectedEquipmentIds([]);
+    setSelectedEquipmentMap({});
+    setEquipmentPreviewIndex(0);
+  }, [sourceMode, equipmentQuery.data, selectedEquipmentIds.length]);
+
   const activeItems =
     sourceMode === 'file' ? fileItems : selectedEquipmentItems;
 

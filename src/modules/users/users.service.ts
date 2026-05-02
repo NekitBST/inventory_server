@@ -20,6 +20,9 @@ export class UsersService {
     private readonly redis: RedisService,
   ) {}
 
+  private readonly defaultAdminProtectionMessage =
+    'Нельзя вносить изменения в дефолтного администратора';
+
   async findAll(params: FindUsersQueryDto) {
     const page = params.page < 1 ? 1 : params.page;
     const limit =
@@ -88,15 +91,17 @@ export class UsersService {
     if (!user) throw new NotFoundException('Пользователь не найден');
 
     const defaultAdminLogin = process.env.ADMIN_LOGIN?.trim().toLowerCase();
+    const isDefaultAdmin =
+      defaultAdminLogin &&
+      user.email.trim().toLowerCase() === defaultAdminLogin;
 
     if (
-      dto.roleId !== undefined &&
-      defaultAdminLogin &&
-      user.email.trim().toLowerCase() === defaultAdminLogin
+      isDefaultAdmin &&
+      (dto.fullName !== undefined ||
+        dto.password !== undefined ||
+        dto.roleId !== undefined)
     ) {
-      throw new ConflictException(
-        'Нельзя менять роль дефолтного администратора',
-      );
+      throw new ConflictException(this.defaultAdminProtectionMessage);
     }
 
     if (dto.fullName !== undefined) user.fullName = dto.fullName;
@@ -116,9 +121,7 @@ export class UsersService {
       defaultAdminLogin &&
       user.email.trim().toLowerCase() === defaultAdminLogin
     ) {
-      throw new ConflictException(
-        'Нельзя деактивировать дефолтного администратора',
-      );
+      throw new ConflictException(this.defaultAdminProtectionMessage);
     }
 
     if (!user.isActive) {
@@ -131,6 +134,14 @@ export class UsersService {
 
   async restore(id: string): Promise<void> {
     const user = await this.findById(id);
+    const defaultAdminLogin = process.env.ADMIN_LOGIN?.trim().toLowerCase();
+
+    if (
+      defaultAdminLogin &&
+      user.email.trim().toLowerCase() === defaultAdminLogin
+    ) {
+      throw new ConflictException(this.defaultAdminProtectionMessage);
+    }
 
     if (user.isActive) {
       throw new ConflictException('Пользователь уже активен');

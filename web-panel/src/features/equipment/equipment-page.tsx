@@ -57,6 +57,18 @@ export function EquipmentPage() {
     useState('');
   const [formError, setFormError] = useState('');
 
+  const invalidateEquipmentRelatedQueries = async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['equipment'] }),
+      queryClient.invalidateQueries({ queryKey: ['equipment-timeline'] }),
+      queryClient.invalidateQueries({ queryKey: ['inventory-records'] }),
+      queryClient.invalidateQueries({ queryKey: ['reports'] }),
+      queryClient.invalidateQueries({
+        queryKey: ['label-generator-equipment'],
+      }),
+    ]);
+  };
+
   const filters = useMemo(
     () => ({
       page,
@@ -94,7 +106,7 @@ export function EquipmentPage() {
     onSuccess: async () => {
       setPendingDeleteId(null);
       pushToast({ title: 'Оборудование удалено', tone: 'warning' });
-      await queryClient.invalidateQueries({ queryKey: ['equipment'] });
+      await invalidateEquipmentRelatedQueries();
     },
     onError: (error) => {
       const message = getApiErrorMessage(error);
@@ -112,7 +124,7 @@ export function EquipmentPage() {
       setForm(initialFormState);
       setFormError('');
       pushToast({ title: 'Оборудование создано', tone: 'success' });
-      await queryClient.invalidateQueries({ queryKey: ['equipment'] });
+      await invalidateEquipmentRelatedQueries();
     },
     onError: (error) => {
       const message = getApiErrorMessage(error);
@@ -133,7 +145,7 @@ export function EquipmentPage() {
       setForm(initialFormState);
       setFormError('');
       pushToast({ title: 'Оборудование обновлено', tone: 'info' });
-      await queryClient.invalidateQueries({ queryKey: ['equipment'] });
+      await invalidateEquipmentRelatedQueries();
     },
     onError: (error) => {
       const message = getApiErrorMessage(error);
@@ -469,7 +481,7 @@ export function EquipmentPage() {
       <ConfirmDialog
         isOpen={Boolean(pendingDeleteId)}
         title="Удалить оборудование?"
-        description="Запись будет скрыта (soft delete) и исчезнет из активного списка."
+        description="Запись будет удалена и исчезнет из активного списка."
         confirmText="Удалить"
         tone="danger"
         isProcessing={removeMutation.isPending}

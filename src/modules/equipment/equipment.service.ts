@@ -132,7 +132,8 @@ export class EquipmentService {
       typeId: dto.typeId,
     });
 
-    const createdEquipment = await this.saveWithUniqueConstraintHandling(equipment);
+    const createdEquipment =
+      await this.saveWithUniqueConstraintHandling(equipment);
 
     await this.logAuditEvent({
       equipmentId: createdEquipment.id,
@@ -152,7 +153,11 @@ export class EquipmentService {
     return createdEquipment;
   }
 
-  async update(id: string, dto: UpdateEquipmentDto, user: User): Promise<Equipment> {
+  async update(
+    id: string,
+    dto: UpdateEquipmentDto,
+    user: User,
+  ): Promise<Equipment> {
     const equipment = await this.equipmentRepo.findOne({
       where: { id, deletedAt: IsNull() },
       relations: ['status', 'type', 'location'],
@@ -185,14 +190,19 @@ export class EquipmentService {
       equipment.name = dto.name;
     }
 
-    if (
-      dto.serialNumber !== undefined &&
-      dto.serialNumber !== equipment.serialNumber
-    ) {
-      await this.ensureSerialNumberUnique(dto.serialNumber);
-      fromState.serialNumber = equipment.serialNumber;
-      toState.serialNumber = dto.serialNumber;
-      equipment.serialNumber = dto.serialNumber;
+    if (dto.serialNumber !== undefined) {
+      if (
+        dto.serialNumber !== null &&
+        dto.serialNumber !== equipment.serialNumber
+      ) {
+        await this.ensureSerialNumberUnique(dto.serialNumber);
+      }
+
+      if (dto.serialNumber !== equipment.serialNumber) {
+        fromState.serialNumber = equipment.serialNumber;
+        toState.serialNumber = dto.serialNumber;
+        equipment.serialNumber = dto.serialNumber;
+      }
     }
 
     if (dto.statusId !== undefined && dto.statusId !== equipment.statusId) {
@@ -229,6 +239,7 @@ export class EquipmentService {
       fromState.location = equipment.location?.name ?? null;
       if (dto.locationId === null) {
         equipment.locationId = null;
+        equipment.location = null;
         toState.location = null;
         locationAtEventTime = null;
       } else {
