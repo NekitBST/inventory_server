@@ -1,13 +1,17 @@
-import { Injectable, Logger, OnApplicationShutdown, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnApplicationShutdown,
+  OnModuleInit,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Bonjour, { Service } from 'bonjour-service';
 import { networkInterfaces } from 'node:os';
+import { Request } from 'express';
 import { DiscoveryInfoResponseDto } from './dto/discovery-info-response.dto';
 
 @Injectable()
-export class DiscoveryService
-  implements OnModuleInit, OnApplicationShutdown
-{
+export class DiscoveryService implements OnModuleInit, OnApplicationShutdown {
   private readonly logger = new Logger(DiscoveryService.name);
   private readonly bonjour = new Bonjour();
   private service?: Service;
@@ -61,10 +65,11 @@ export class DiscoveryService
     this.bonjour.destroy();
   }
 
-  getInfo(): DiscoveryInfoResponseDto {
+  getInfo(request?: Request): DiscoveryInfoResponseDto {
     const addresses = this.getLocalAddresses();
     const baseUrls = this.getBaseUrls(addresses);
-    const resolvedBaseUrl = this.publicBaseUrl ?? baseUrls[0] ?? null;
+    const resolvedBaseUrl =
+      this.getResolvedBaseUrl(request) ?? baseUrls[0] ?? null;
 
     return {
       serviceName: this.serviceName,
@@ -88,6 +93,43 @@ export class DiscoveryService
     }
 
     return addresses.map((address) => `http://${address}:${this.port}`);
+  }
+
+  private getResolvedBaseUrl(request?: Request) {
+    if (this.publicBaseUrl && !this.isLoopbackUrl(this.publicBaseUrl)) {
+      return this.publicBaseUrl;
+    }
+
+    if (!request) {
+      return this.publicBaseUrl ?? null;
+    }
+
+    const forwardedHost = request.get('x-forwarded-host')?.trim();
+    const host = forwardedHost || request.get('host')?.trim();
+    if (!host) {
+      return this.publicBaseUrl ?? null;
+    }
+
+    const forwardedProto = request
+      .get('x-forwarded-proto')
+      ?.split(',')[0]
+      ?.trim();
+    const protocol = forwardedProto || request.protocol;
+    const forwardedPrefix = request.get('x-forwarded-prefix')?.trim() ?? '';
+    const normalizedPrefix = forwardedPrefix
+      ? `/${forwardedPrefix.replace(/^\/+|\/+$/g, '')}`
+      : '';
+
+    return `${protocol}://${host}${normalizedPrefix}`;
+  }
+
+  private isLoopbackUrl(value: string) {
+    try {
+      const url = new URL(value);
+      return ['localhost', '127.0.0.1', '::1'].includes(url.hostname);
+    } catch {
+      return false;
+    }
   }
 
   private getLocalAddresses() {

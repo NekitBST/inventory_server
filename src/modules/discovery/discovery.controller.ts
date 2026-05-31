@@ -1,5 +1,6 @@
-import { Controller, Get } from '@nestjs/common';
+import { Controller, Get, Req } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import type { Request } from 'express';
 import { DiscoveryService } from './discovery.service';
 import { DiscoveryInfoResponseDto } from './dto/discovery-info-response.dto';
 
@@ -13,7 +14,7 @@ export class DiscoveryController {
     summary: 'Public LAN discovery metadata for connected clients',
   })
   @ApiOkResponse({ type: DiscoveryInfoResponseDto })
-  getInfo(): DiscoveryInfoResponseDto {
-    return this.discoveryService.getInfo();
+  getInfo(@Req() request: Request): DiscoveryInfoResponseDto {
+    return this.discoveryService.getInfo(request);
   }
 }
